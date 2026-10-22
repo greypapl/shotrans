@@ -1,0 +1,116 @@
+﻿截图翻译 使用说明 / Screenshot Translator – Guide
+==================================================
+
+【中文】
+
+1. 第一次运行
+   - 把压缩包解压到任意文件夹（路径里有中文或空格都可以）。
+   - 双击「截图翻译.exe」。
+   - 如果 Windows 提示「Windows 已保护你的电脑」：点「更多信息」，再点「仍要运行」。
+     （没有数字签名的程序都会这样提示。）
+   - 之后按引导走：选界面语言、检查 OCR 语言包、填入你自己的翻译服务 API，并测试通过。
+
+2. 使用
+   - 默认快捷键 Ctrl+Alt+Q：按下后框选屏幕上的一块区域，译文会原位覆盖在原文上，
+     鼠标悬停可以看到原文。在截图里右键空白处直接关闭。
+   - 右键托盘图标，有「设置」「自检」「历史记录」等菜单。
+   - 以后每次双击启动，程序直接进托盘，右下角弹出「已在后台运行」的提示（点它打开历史记录）。
+     托盘图标可能收在任务栏右下角的 ^ 里面。开机自启时不弹这个提示。
+   - 这个提示和其他提醒（快捷键被占用、出错等）是程序自己画的右下角小窗，
+     Windows 关了通知、开了勿扰也看得到。约 6 秒后自动消失，鼠标停在上面不消失，点 × 关掉。
+
+3. 数据放在哪里
+   - %APPDATA%\截图翻译 （配置、术语表、历史记录、日志都在这里）。
+   - 历史记录默认连同截图（原图和译文图）一起保存在其中的 history_images 文件夹里，
+     条数上限与历史记录相同，删除或清空历史时图片一起删除。
+     不想保存截图：设置 → 常规，取消勾选「保存截图图片」（之后只存文字）。
+   - 你的 API key 用 Windows 当前用户的身份加密保存；换电脑或换 Windows 账号后要重新填写。
+
+4. 试用但不动自己的数据
+   - 先在托盘图标上右键「退出」正在运行的截图翻译，
+     再双击「用临时数据目录启动.bat」。每次都是全新状态，不会读写你的真实数据，
+     也不会建立或删除开机自启的快捷方式。
+   - 所以试用模式里「开机自启」是灰的，没法在试用模式里测开机自启。
+
+5. 开机自启
+   - 在 设置 → 常规 里勾选「开机自启」。
+   - 如果之后移动了程序文件夹，或者从源码版换成了这个 exe：打开「设置」，点一次「应用」，
+     开机自启的快捷方式就会改成指向现在的位置。
+   - 从旧版本升级的：旧的开机自启快捷方式开机时也会弹「已在后台运行」提示，
+     打开「设置」点一次「应用」就不再弹。
+
+6. 卸载
+   - 先在设置里取消「开机自启」，再在托盘图标上右键退出程序，然后删除程序文件夹即可。
+   - 如果想同时删除数据，再删除 %APPDATA%\截图翻译 。
+
+7. 杀毒软件误报
+   - 本程序用 PyInstaller 打包且没有数字签名，个别杀毒软件可能误报。
+   - 可以到杀毒软件厂商的误报申报页面提交，例如 Microsoft：
+     https://www.microsoft.com/wdsi/filesubmission
+   - 也可以直接从源码运行。
+
+8. 许可
+   - 本程序使用 MIT 许可（见 LICENSE.txt）。
+   - 第三方组件的许可见 licenses\ 文件夹。
+
+
+【English】
+
+1. First run
+   - Unzip to any folder (the path may contain spaces or non-English characters).
+   - Double-click 截图翻译.exe.
+   - If Windows shows "Windows protected your PC", click "More info", then "Run anyway".
+     (Every unsigned program gets this warning.)
+   - Follow the setup guide: pick the language, check the OCR language packs, and enter
+     your own translation-service API details and run the test.
+
+2. Usage
+   - Default hotkey: Ctrl+Alt+Q. Press it, drag a box over some text on screen, and the
+     translation is drawn over the original in place. Hover the mouse to see the original.
+     Right-click a blank spot inside the screenshot to close it.
+   - Right-click the tray icon for Settings, Self-check and History.
+   - After the first run, starting it by hand puts it straight into the tray and shows a
+     "running in the background" notice (click it to open History). The tray icon may be
+     hidden under ^ at the right end of the taskbar. No notice when it starts with Windows.
+   - That notice and the other warnings (hotkey taken, errors, ...) are a small window
+     drawn by the app itself, so they show up even with Windows notifications off or
+     Do Not Disturb on. They fade after about 6 seconds (not while the mouse is over
+     them); click × to close.
+
+3. Where your data lives
+   - %APPDATA%\截图翻译 (settings, glossary, history and logs).
+   - By default, history also keeps each screenshot (original and translated) in the
+     history_images folder there, up to the same entry limit; deleting or clearing history
+     deletes them too. To keep text only: Settings -> General, untick "Save screenshot images".
+   - Your API key is encrypted for the current Windows user; if you move to another PC or
+     another Windows account, enter it again.
+
+4. Trying it without touching your data
+   - First right-click the tray icon and quit any running copy, then double-click
+     用临时数据目录启动.bat. It starts with a brand-new throw-away data folder every time
+     and never touches your real data. It also never creates or deletes the
+     start-with-Windows shortcut.
+   - So the start-with-Windows option is greyed out in trial mode; it can't be tested there.
+
+5. Start with Windows
+   - Tick the option in Settings -> General ("开机自启" / start with Windows).
+   - If you later move the program folder, or switch from the source version to this exe:
+     open Settings and press Apply once; the shortcut is then pointed at the new location.
+   - Upgrading from an older version: the old shortcut still shows the "running in the
+     background" notice at boot; open Settings and press Apply once to stop it.
+
+6. Uninstall
+   - Untick the start-with-Windows option in Settings, quit the tray app, then delete the
+     program folder.
+   - To remove your data as well, also delete %APPDATA%\截图翻译 .
+
+7. Antivirus false positives
+   - The program is packaged with PyInstaller and is not code-signed, so some antivirus
+     products may report a false positive.
+   - You can submit it on the vendor's false-positive page, for example Microsoft:
+     https://www.microsoft.com/wdsi/filesubmission
+   - Or run it from source instead.
+
+8. License
+   - This program is MIT licensed (see LICENSE.txt).
+   - Third-party licenses are in the licenses\ folder.

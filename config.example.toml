@@ -1,0 +1,50 @@
+# 截图翻译的配置模板（新格式）。一般不用手写：第一次运行会弹出引导，托盘「设置…」里也都能改。
+# 想手写时：复制到 %APPDATA%\截图翻译\config.toml，改完在托盘点「重新加载配置」。
+# api_key 可以手写明文，程序下次在设置里保存时会改成加密的 api_key_enc 并删掉明文。
+
+[general]
+language = "zh"          # 界面语言：zh / en
+# autostart = false      # 开机自启；不写 = 不改动「启动」文件夹
+
+[primary]                # 主服务（OpenAI 兼容接口）
+preset = "custom"        # deepseek / siliconflow / bailian / openai / custom
+base_url = ""            # 例：https://api.deepseek.com；留空 = 不用主服务
+api_key = ""
+model = ""               # 留空 = 用服务端 /models 的第一个
+thinking_off = false     # 关闭思考；按下一项的方式发送
+thinking_style = "chat_template_kwargs"  # chat_template_kwargs（自建 vLLM）/ enable_thinking（百炼、硅基流动）/ deepseek / openai_reasoning
+
+[backup]                 # 备用服务：主服务失败时用；留空 = 不用
+preset = "custom"
+base_url = ""
+api_key = ""
+model = ""
+thinking_off = false
+thinking_style = "chat_template_kwargs"
+
+[tencent]
+enabled = false          # true = 主/备都失败时用腾讯免 key 接口兜底（非官方，不稳定；识别出的文字会发给腾讯）。
+                         # 整行不写 = false（只有旧格式、用 vllm/fallback 两节的老配置不写时按 true 算，兼容旧版本）
+connect = 6.0            # 秒：连接超时（含 TLS 握手）
+
+[hotkey]
+capture = "Ctrl+Alt+Q"
+
+[translate]
+domain_hint = ""         # 领域提示，例如 "心理学和医学学术论文"
+chunk_chars = 600        # 大模型翻译分块：每块约多少个原文字符
+chunk_max_segments = 8   # 每块至多几段
+max_concurrency = 4      # 同一服务最多几块同时请求；1 = 一块接一块
+
+[timeouts]               # 单位：秒
+connect = 6.0            # 主服务连接超时
+first_token = 10.0       # 主服务首字超时
+stall = 20.0             # 主服务断流超时
+breaker = 60.0           # 主服务失败后多久内直接走下一层
+backup_connect = 6.0
+backup_first_token = 10.0
+backup_stall = 20.0
+
+[history]
+limit = 200              # 历史记录保留条数（截图图片跟着记录一起保留、一起删除）
+save_images = true       # true = 每条历史连同原图和译文图（PNG）存在数据目录的 history_images\ 里；false = 只存文字

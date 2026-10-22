@@ -1,0 +1,2 @@
+# 随包发出去的使用说明：不管 core.autocrlf 怎么设，检出时都是 CRLF（老版本记事本要）。BOM 是文件内容本身，tests/test_packaging_text.py 守着。
+packaging/使用说明.txt text eol=crlf

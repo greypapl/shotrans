@@ -1,0 +1,149 @@
+# 20 个对比测试用例。图片、真值、结果都不进 git（含他人论文截图）。
+# kind = "pdf"：pdf / page / clip（PDF 坐标，单位 pt）；会导出真值算错字率
+# kind = "web"：url / size / dark
+# kind = "qt" ：widget（见 tools/make_bench.py）
+#
+# PDF 用例说明：pdf 写相对路径时按 bench/ 目录解析（绝对路径也可以）。PDF 本身不进 git，
+# 自己准备好放进 bench/pdfs/：
+# - 01_data_centric.pdf、02_model_centric.pdf、Beginner_Tutorial_and_Hack_Guide_2.pdf：
+#   一份中文单栏教程（无摘要/参考文献/双栏），用于单栏正文、表格；
+# - N19-1423.pdf：BERT 论文（Devlin et al., NAACL 2019，ACL Anthology N19-1423，英文双栏），
+#   用于双栏、摘要、图注、参考文献、标题+正文，更贴近真实使用场景。
+# 换成别的 PDF 时，page / clip 要按下面的取法重新取。
+#
+# clip 取法（Task 7b）：用 `python -m tools.pdf_regions <pdf> <页>` 列出文字块，clip = 所选整块的外框
+# 各向外留约 3pt，且不碰到相邻块——截图边缘不会切到半行字，真值里也就没有截图里看不清的字。
+# 双栏用例要求两栏在同一高度都有块间隙：04 取第 1 页 y≈427（左栏 423|429、右栏 426|429），
+# 05 取第 4 页 y≈62~729（两栏唯一共同的间隙在 726~734）。
+
+# ---- PDF：单栏正文 ×3（中文教程）----
+[[case]]
+id = "01"
+kind = "pdf"
+pdf = "pdfs/01_data_centric.pdf"
+page = 1
+clip = [40, 588, 542, 678]
+
+[[case]]
+id = "02"
+kind = "pdf"
+pdf = "pdfs/02_model_centric.pdf"
+page = 3
+clip = [40, 635, 550, 770]
+
+[[case]]
+id = "03"
+kind = "pdf"
+pdf = "pdfs/01_data_centric.pdf"
+page = 2
+clip = [40, 329, 550, 411]
+
+# ---- PDF：双栏跨两栏的区域 ×2（BERT 论文）----
+[[case]]
+id = "04"
+kind = "pdf"
+pdf = "pdfs/N19-1423.pdf"
+page = 1
+clip = [69, 427, 529, 769]
+
+[[case]]
+id = "05"
+kind = "pdf"
+pdf = "pdfs/N19-1423.pdf"
+page = 4
+clip = [69, 62, 529, 729]
+
+# ---- PDF：摘要 ×1 ----
+[[case]]
+id = "06"
+kind = "pdf"
+pdf = "pdfs/N19-1423.pdf"
+page = 1
+clip = [86, 221, 276, 550]
+
+# ---- PDF：表格 ×2（中文教程）----
+[[case]]
+id = "07"
+kind = "pdf"
+pdf = "pdfs/Beginner_Tutorial_and_Hack_Guide_2.pdf"
+page = 1
+clip = [47, 303, 378, 396]
+
+[[case]]
+id = "08"
+kind = "pdf"
+pdf = "pdfs/Beginner_Tutorial_and_Hack_Guide_2.pdf"
+page = 1
+clip = [47, 486, 432, 694]
+
+# ---- PDF：图注 ×1 ----
+[[case]]
+id = "09"
+kind = "pdf"
+pdf = "pdfs/N19-1423.pdf"
+page = 3
+clip = [69, 256, 529, 320]
+
+# ---- PDF：参考文献 ×1 ----
+[[case]]
+id = "10"
+kind = "pdf"
+pdf = "pdfs/N19-1423.pdf"
+page = 11
+clip = [69, 63, 293, 331]
+
+# ---- PDF：标题+正文混合 ×1 ----
+[[case]]
+id = "11"
+kind = "pdf"
+pdf = "pdfs/N19-1423.pdf"
+page = 4
+clip = [69, 481, 293, 584]
+
+# ---- 网页 / 界面 ----
+[[case]]
+id = "12"
+kind = "web"
+url = "https://en.wikipedia.org/wiki/Major_depressive_disorder"
+
+[[case]]
+id = "13"
+kind = "web"
+url = "https://en.wikipedia.org/wiki/Major_depressive_disorder"
+dark = true
+
+[[case]]
+id = "14"
+kind = "web"
+url = "https://arxiv.org/abs/1706.03762"
+
+[[case]]
+id = "15"
+kind = "web"
+url = "https://github.com/microsoft/PowerToys"
+dark = true
+
+[[case]]
+id = "16"
+kind = "web"
+url = "https://docs.python.org/3/library/asyncio.html"
+
+[[case]]
+id = "17"
+kind = "web"
+url = "https://zh.wikipedia.org/wiki/抑郁症"
+
+[[case]]
+id = "18"
+kind = "qt"
+widget = "dialog_en"
+
+[[case]]
+id = "19"
+kind = "qt"
+widget = "settings_en"
+
+[[case]]
+id = "20"
+kind = "qt"
+widget = "dialog_zh"

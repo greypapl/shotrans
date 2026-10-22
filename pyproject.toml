@@ -1,0 +1,4 @@
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+markers = ["real_clipboard: 使用真实系统剪贴板的冒烟测试（其余测试用内存假剪贴板）"]

@@ -1,0 +1,29 @@
+# 本机配置与个人数据（含 API key、术语表、历史）
+config.local.toml
+config.toml
+config.toml.*
+*.bak
+.env
+术语表.txt
+history.json
+history.json.*
+logs/
+debug/
+
+# 对比测试的图片、真值、结果和 PDF（含他人论文截图，不进 git）
+bench/images/
+bench/truth/
+bench/out/
+bench/youdao/
+bench/pdfs/
+
+# 构建产物
+build/
+dist/
+
+# Python
+.venv/
+venv/
+__pycache__/
+.pytest_cache/
+*.pyc

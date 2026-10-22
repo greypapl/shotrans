@@ -1,0 +1,2 @@
+# 打包 exe 才需要（python -m tools.build_release）。先装 requirements.txt，再装这个。
+pyinstaller==6.22.3

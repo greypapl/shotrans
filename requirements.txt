@@ -1,0 +1,18 @@
+# 截图翻译的依赖。装在 conda 单独建的 Python 3.12 环境里：
+#   conda create -y -n shotrans python=3.12
+#   conda activate shotrans
+#   python -m pip install -r requirements.txt
+PySide6>=6.7                    # 界面：托盘、框选、浮窗
+Pillow>=10.3                    # 画译文
+numpy>=1.26                     # 取色
+httpx>=0.27                     # 调 vLLM 和备用翻译接口
+winrt-runtime>=2.3              # 调 Windows 自带 OCR
+winrt-Windows.Foundation>=2.3
+winrt-Windows.Foundation.Collections>=2.3
+winrt-Windows.Globalization>=2.3
+winrt-Windows.Graphics.Imaging>=2.3
+winrt-Windows.Media.Ocr>=2.3
+winrt-Windows.Storage.Streams>=2.3
+PyMuPDF>=1.24                   # 只有 tools/make_bench.py 用：从 PDF 截测试图
+pytest>=8
+pytest-qt>=4.4
