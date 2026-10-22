@@ -395,3 +395,10 @@ def test_main_checks_provenance_after_pyinstaller(monkeypatch, tmp_path):
     assert br.main(["--skip-tests"]) == 1
     assert seen == [(app / "_internal", Path(sys.prefix), len(calls))]
     assert "PyInstaller" in calls[-1][0]
+
+
+def test_zip_name_is_ascii_for_github_releases():
+    """GitHub Releases 会删掉附件名里的非 ASCII 字符（「截图翻译-…zip」上传后变成「-…zip」）。"""
+    import shotrans
+    assert br.ZIP.name == f"ShotTrans-{shotrans.__version__}-win64.zip"
+    assert br.ZIP.name.isascii()

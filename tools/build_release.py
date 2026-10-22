@@ -24,7 +24,7 @@ ROOT = Path(__file__).resolve().parents[1]
 DIST = ROOT / "dist"
 APP = DIST / "截图翻译"
 EXE = APP / "截图翻译.exe"
-ZIP = DIST / f"截图翻译-{shotrans.__version__}-win64.zip"
+ZIP = DIST / f"ShotTrans-{shotrans.__version__}-win64.zip"  # 英文名：GitHub Releases 会删掉附件名里的中文
 DROP_VARS = ("PYTHONPATH", "PYTHONHOME", "QT_PLUGIN_PATH", "QT_QPA_PLATFORM", "QT_QPA_PLATFORM_PLUGIN_PATH",
              "SHOTRANS_LEGACY_DIR")
 # 扫描自证：exe 里 PYZ 解开后必须出现这个条目，否则说明解包失效、扫描形同虚设
