@@ -24,6 +24,13 @@ def test_ensure_glossary_creates_template(tmp_path):
     assert "=>" in text and text.lstrip().startswith("#")
 
 
+def test_glossary_template_is_all_comments_and_states_case_rule():
+    from shotrans.app import GLOSSARY_TEMPLATE
+    from shotrans.glossary import Glossary, parse_glossary
+    assert parse_glossary(GLOSSARY_TEMPLATE) == Glossary()   # 说明文字不能被读成词条
+    assert "大小写" in GLOSSARY_TEMPLATE and "exact case" in GLOSSARY_TEMPLATE
+
+
 def test_ensure_glossary_keeps_existing(tmp_path):
     p = tmp_path / "术语表.txt"
     p.write_text("PHQ-8\n", encoding="utf-8")

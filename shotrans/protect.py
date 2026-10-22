@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
+from functools import lru_cache
 from typing import Iterable
 
 
@@ -71,11 +72,49 @@ class Protected:
     pills: dict[str, int] = field(default_factory=dict)
 
 
+def ignores_case(term: str) -> bool:
+    """智能大小写：英文词条全小写才不分大小写；含任何大写字母（US、GPU、PyTorch）就只认原样。中文等照原样。"""
+    return term.isascii() and term == term.lower()
+
+
+def _cap_positions(term: str) -> tuple[int, ...]:
+    """含大写的英文词条里，可以首字母大写的位置：每个词（开头或紧跟在非字母数字后面）开头的小写字母。
+    「naive Bayes」也认「Naive Bayes」，「API gateway」也认「API Gateway」；词中间的字母和本来就大写的字母照旧只认原样。"""
+    return tuple(i for i, c in enumerate(term)
+                 if "a" <= c <= "z" and (i == 0 or not term[i - 1].isalnum()))
+
+
+@lru_cache(maxsize=8192)
 def term_pattern(term: str) -> re.Pattern:
-    esc = re.escape(term)
+    """术语表词条的匹配规则（relevant() 挑词条、protect() 换占位符共用）。每个词条只编译一次：
+    re 自带的缓存只有 512 条，几千条的术语表每次翻译都会重新编译。"""
     if term.isascii():
-        return re.compile(rf"(?<![A-Za-z0-9]){esc}(?![A-Za-z0-9])", re.IGNORECASE)
-    return re.compile(esc)
+        if ignores_case(term):
+            body, flags = re.escape(term), re.IGNORECASE
+        else:
+            caps = set(_cap_positions(term))
+            body = "".join(f"[{c}{c.upper()}]" if i in caps else re.escape(c) for i, c in enumerate(term))
+            flags = 0
+        return re.compile(rf"(?<![A-Za-z0-9]){body}(?![A-Za-z0-9])", flags)
+    return re.compile(re.escape(term))
+
+
+@lru_cache(maxsize=8192)
+def prefilter_needle(term: str) -> tuple[str, bool]:
+    """快速预筛：(要找的子串, 是否在 fold_case(text) 里找)。term_pattern 能匹配到，这个子串就一定在。
+    不分大小写的词条、以及有可大写首字母的词条，在折叠后的文字里找小写形式；其余（US、PyTorch、中文）在原文里找原样。"""
+    if term.isascii() and (ignores_case(term) or _cap_positions(term)):
+        return term.lower(), True
+    return term, False
+
+
+# re 的不分大小写会把 ſ 当成 s、İ/ı 当成 i（lower() 不会）：预筛用的折叠要比正则认得宽，不能漏
+_FOLD = str.maketrans({"ſ": "s", "İ": "i", "ı": "i"})
+
+
+def fold_case(text: str) -> str:
+    """给「不分大小写的词条」做子串预筛用：词条能被 term_pattern 匹配到，就一定是 fold_case(text) 的子串。"""
+    return text.translate(_FOLD).lower()
 
 
 PillText = str | tuple[str, int | None]

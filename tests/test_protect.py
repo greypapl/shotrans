@@ -33,9 +33,10 @@ def test_confidence_interval():
 
 
 def test_keep_terms_case_insensitive_whole_word():
-    p = protect("The daic-woz corpus and DAIC-WOZish", ["DAIC-WOZ"])
-    assert p.text == "The ⟨1⟩ corpus and DAIC-WOZish"
-    assert p.slots == {"⟨1⟩": "daic-woz"}
+    # 全小写的词条不分大小写（含大写字母的只认原样，见 test_glossary_case.py）
+    p = protect("The DAIC-WOZ corpus and daic-wozish", ["daic-woz"])
+    assert p.text == "The ⟨1⟩ corpus and daic-wozish"
+    assert p.slots == {"⟨1⟩": "DAIC-WOZ"}
 
 
 def test_chinese_keep_term():

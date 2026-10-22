@@ -39,6 +39,10 @@ INSTANCE_NAME = "Local\\shotrans-single-instance"  # 单实例互斥量（当前
 
 GLOSSARY_TEMPLATE = """# 术语表：一行一条，# 开头是注释。
 # 「原文 => 译法」指定译法；只写一个词表示保持原样、不翻。
+# 大小写：英文词条全小写就不分大小写（depression 也认 Depression）；
+# 含大写字母就只认原样（US 不会碰正文里的 us，GPU 不碰 gpu），只是小写开头的词首字母可大写（naive Bayes 也认 Naive Bayes）。
+# Case: an all-lowercase English term matches any case; a term with a capital letter matches that exact case,
+# except a word starting lowercase may also be capitalized (naive Bayes matches Naive Bayes).
 # 例：
 # depression => 抑郁
 # DAIC-WOZ

@@ -33,7 +33,8 @@ def test_relevant_en2zh_only_present_terms():
 
 
 def test_relevant_zh2en_reversed():
-    maps, keep = relevant(parse_glossary(SAMPLE), "重度抑郁障碍患者", "zh2en")
+    # 「抑郁」另外单独出现一次；只出现在「重度抑郁障碍」里时不给（见 test_glossary_overlap.py）
+    maps, keep = relevant(parse_glossary(SAMPLE), "重度抑郁障碍患者常伴抑郁", "zh2en")
     assert ("重度抑郁障碍", "major depressive disorder") in maps
     assert ("抑郁", "depression") in maps
     assert keep == []
