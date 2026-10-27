@@ -11,15 +11,16 @@ from pathlib import Path
 from typing import Callable
 
 from PySide6.QtCore import QObject, QRect, Qt, QTimer, Signal
-from PySide6.QtGui import QAction
+from PySide6.QtGui import QAction, QCursor, QGuiApplication
 from PySide6.QtWidgets import QApplication, QMenu, QMessageBox, QSystemTrayIcon
 
 from . import autostart, i18n, paths
 from .capture import Capturer
+from .cliptext import MAX_CHARS, split_paragraphs
 from .config import Config, ConfigError, load_config, write_config
 from .glossary import Glossary, load_glossary
 from .history import History
-from .hotkey import GlobalHotkey, parse_hotkey, try_register
+from .hotkey import GlobalHotkey, parse_hotkey, same_combo, try_register
 from .i18n import N_, t
 from .iconart import make_icon
 from .migrate import migrate_legacy, needs_migration
@@ -36,6 +37,7 @@ from .ui.windows import WindowManager
 log = logging.getLogger(__name__)
 
 INSTANCE_NAME = "Local\\shotrans-single-instance"  # 单实例互斥量（当前用户会话内）
+CLIP_HOTKEY_ID = 0xB0A6  # 「复制后翻译」快捷键（截图 0xB0A1，自检 0xB0A2，试注册 0xB0A4）
 
 GLOSSARY_TEMPLATE = """# 术语表：一行一条，# 开头是注释。
 # 「原文 => 译法」指定译法；只写一个词表示保持原样、不翻。
@@ -87,12 +89,7 @@ def migration_notice(m, home: Path):
     return t("notice.migrate_failed", reason=m.reason) + where, QSystemTrayIcon.MessageIcon.Warning
 
 
-def same_hotkey(a: str, b: str) -> bool:
-    """按解析结果比较（Ctrl+Alt+Q 和 ctrl+alt+q 是同一个）；任一个写错就算不同。"""
-    try:
-        return parse_hotkey(a) == parse_hotkey(b)
-    except ValueError:
-        return False
+same_hotkey = same_combo  # 旧名字：测试和别处还在用
 
 
 def _default_factories(app) -> dict[str, Callable]:
@@ -154,7 +151,8 @@ class ShotTransApp(QObject):
         self.router = router
         self.history = History(paths.history_path(home), c.history_limit,
                                images_dir=paths.history_images_dir(home), save_images=c.history_save_images)
-        self.overlays: list[OverlayWindow] = []
+        self.overlays: list = []  # 截图浮窗和「复制后翻译」小窗（都有 pinned，截屏前一起藏）
+        self.clip_window = None   # 最近一个「复制后翻译」小窗
         self._hidden: list[OverlayWindow] = []  # 截屏前被藏起来的浮窗
         self.capturer = Capturer(before_grab=self._before_grab, after_grab=self._after_grab)
         self.capturer.captured.connect(self.on_captured)
@@ -174,6 +172,9 @@ class ShotTransApp(QObject):
         if not self.hotkey.register():
             self.notify(t("notice.hotkey_taken", hotkey=c.hotkey), target="settings:hotkey")
             log.warning("快捷键 %s 注册失败", c.hotkey)
+        self.clip_hotkey: GlobalHotkey | None = None
+        if c.clip_hotkey.strip() and not self._register_clip_hotkey(c.clip_hotkey):
+            self.notify(t("notice.clip_hotkey_taken", hotkey=c.clip_hotkey), target="settings:hotkey")
         if glossary_failed:
             self.notify(t("notice.glossary_startup", log=self.log_file))
         if not c.primary.configured:
@@ -214,6 +215,7 @@ class ShotTransApp(QObject):
             self._actions[key] = a
 
         add("capture", lambda _=False: self.start_capture())
+        add("clip", lambda _=False: self.start_clip())
         add("history", lambda _=False: self.open_window("history"))
         menu.addSeparator()
         add("settings", lambda _=False: self.open_window("settings"))
@@ -232,7 +234,9 @@ class ShotTransApp(QObject):
     def _retranslate_tray(self, *_) -> None:
         hk = self.config.hotkey
         self.tray.setToolTip(t("tray.tooltip", hotkey=hk))
-        texts = {"capture": t("tray.capture", hotkey=hk), "history": t("tray.history"),
+        clip = self.config.clip_hotkey.strip()
+        texts = {"capture": t("tray.capture", hotkey=hk),
+                 "clip": t("tray.clip", hotkey=clip) if clip else t("tray.clip_off"), "history": t("tray.history"),
                  "settings": t("tray.settings"), "doctor": t("tray.doctor"), "reload": t("tray.reload"),
                  "about": t("tray.about"), "quit": t("tray.quit")}
         for key, text in texts.items():
@@ -292,9 +296,21 @@ class ShotTransApp(QObject):
     def open_window(self, kind: str, page: str | None = None):
         return self.windows.show(kind, page)
 
+    def _modal_open(self) -> bool:
+        """有模态对话框开着（浮窗的「添加术语」、设置里的确认框）：框选层、小窗开出来也收不到输入，
+        对话框还会被冻进截图。这时快捷键只把对话框提到前面。"""
+        modal = QApplication.activeModalWidget()
+        if modal is None:
+            return False
+        modal.raise_()
+        modal.activateWindow()
+        return True
+
     def start_capture(self) -> None:
         if self.needs_setup:  # 还没配置翻译服务：快捷键、点托盘都改为打开引导
             self.open_window("wizard")
+            return
+        if self._modal_open():
             return
         self.capturer.start()
 
@@ -311,8 +327,9 @@ class ShotTransApp(QObject):
             target = parse_hotkey(spec)
         except ValueError:
             return False
-        if self.hotkey.registered and target == (self.hotkey.mods, self.hotkey.vk):
-            return True
+        for hk in (self.hotkey, self.clip_hotkey):
+            if hk is not None and hk.registered and target == (hk.mods, hk.vk):
+                return True
         return try_register(spec)
 
     def save_config(self, new: Config) -> list[str]:
@@ -341,6 +358,11 @@ class ShotTransApp(QObject):
         except Exception:
             log.exception("重建翻译路由失败")
             failed.append((N_("apply.router"), {}))
+        # 「复制后翻译」的键要换：先放掉旧的，截图键才能换成它（两个键对调的情况）
+        clip_same = (self.clip_hotkey is not None and self.clip_hotkey.registered
+                     and same_hotkey(new.clip_hotkey, old.clip_hotkey))
+        if not clip_same:
+            self._drop_clip_hotkey()
         hotkey = old.hotkey  # 2. 快捷键：注销旧键 → 注册新键；失败就重新注册旧键
         try:
             same = same_hotkey(new.hotkey, old.hotkey)
@@ -357,6 +379,13 @@ class ShotTransApp(QObject):
         except Exception:
             log.exception("更换快捷键失败")
             failed.append((N_("apply.hotkey"), {"hotkey": new.hotkey}))
+        if not clip_same and new.clip_hotkey.strip():  # 2b. 「复制后翻译」的键（空 = 不用）
+            try:
+                if not self._register_clip_hotkey(new.clip_hotkey):
+                    failed.append((N_("apply.clip_hotkey"), {"hotkey": new.clip_hotkey}))
+            except Exception:
+                log.exception("注册「复制后翻译」快捷键失败")
+                failed.append((N_("apply.clip_hotkey"), {"hotkey": new.clip_hotkey}))
         self.config = dataclasses.replace(new, hotkey=hotkey)
         self.history.limit = new.history_limit
         self.history.save_images = new.history_save_images
@@ -380,7 +409,7 @@ class ShotTransApp(QObject):
         items = [t(k, **kw) for k, kw in failed]
         self._last_failed = items
         if items:
-            hotkey_failed = any(k in ("apply.hotkey", "apply.hotkey_lost") for k, _ in failed)
+            hotkey_failed = any(k in ("apply.hotkey", "apply.hotkey_lost", "apply.clip_hotkey") for k, _ in failed)
             self.notify(t("notice.apply_failed", items=t("list.sep").join(items)),
                         target="settings:hotkey" if hotkey_failed else None)
         return items
@@ -400,6 +429,22 @@ class ShotTransApp(QObject):
             log.warning("新快捷键 %s 注册失败，旧快捷键也没能重新注册", spec)
             return "lost"
         return "restored"
+
+    def _register_clip_hotkey(self, spec: str) -> bool:
+        """装上「复制后翻译」的键。注册失败也留着这个对象（registered=False），下次应用配置时重试。spec 写错抛 ValueError。"""
+        hk = GlobalHotkey(spec, self.start_clip, hotkey_id=CLIP_HOTKEY_ID)
+        self._qapp.installNativeEventFilter(hk)
+        self.clip_hotkey = hk
+        if hk.register():
+            return True
+        log.warning("「复制后翻译」快捷键 %s 注册失败", spec)
+        return False
+
+    def _drop_clip_hotkey(self) -> None:
+        hk, self.clip_hotkey = self.clip_hotkey, None
+        if hk is not None:
+            hk.unregister()
+            self._qapp.removeNativeEventFilter(hk)
 
     def _sync_autostart(self, on: bool) -> None:
         """开：快捷方式不在、或指向的不是本程序（移动过文件夹、从源码版换成 exe）就重写；关：在就删。
@@ -451,21 +496,68 @@ class ShotTransApp(QObject):
         for o in list(self.overlays):
             if not o.pinned:
                 o.close()
-        try:
-            self.router.glossary = load_glossary(self.glossary_path)
-        except Exception:
-            log.exception("读取术语表失败，沿用上一份")
-            self.notify(t("notice.glossary_capture", log=self.log_file))
-        w = OverlayWindow(Session(image), rect, self.ocr_fn, self.router, self.history, open_window=self.open_window)
+        self._reload_glossary()
+        w = OverlayWindow(Session(image), rect, self.ocr_fn, self.router, self.history, open_window=self.open_window,
+                          glossary_path=self.glossary_path, on_glossary_saved=self.on_glossary_saved)
         w.closed.connect(self._on_overlay_closed)
         self.overlays.append(w)
         w.show()
         w.raise_()
         w.activateWindow()
 
+    def _reload_glossary(self) -> None:
+        try:
+            self.router.glossary = load_glossary(self.glossary_path)
+        except Exception:
+            log.exception("读取术语表失败，沿用上一份")
+            self.notify(t("notice.glossary_capture", log=self.log_file))
+
     def _on_overlay_closed(self, w) -> None:
         if w in self.overlays:
             self.overlays.remove(w)
+        if w is self.clip_window:
+            self.clip_window = None
+
+    def on_glossary_saved(self, en: str, zh: str) -> None:
+        """浮窗里加了术语（文件已写好）：设置窗口开着时，术语表页没改动就重新读文件；
+        有没保存的改动就把这条也并进它的表格，免得之后在设置里保存时把新词条盖掉。"""
+        w = self.windows.get("settings")
+        page = getattr(w, "glossary", None)
+        if page is None or page.load_error:
+            return
+        if page.is_dirty():
+            page.merge_entry(en, zh)
+        else:
+            page.load()
+
+    # ---------- 复制后翻译 ----------
+    def start_clip(self) -> None:
+        """快捷键 / 托盘菜单：读剪贴板文字，分段后在鼠标旁边弹小窗翻译。剪贴板只读不写。"""
+        if self.needs_setup:
+            self.open_window("wizard")
+            return
+        if self.capturer.busy or self._modal_open():  # 正在框选：小窗会盖在框选层上，框完又被关掉
+            return
+        text = QGuiApplication.clipboard().text()
+        if len(text) > MAX_CHARS:  # 先查长度再分段：几兆的文字分段本身就会卡住界面
+            self.notify(t("notice.clip_too_long", n=len(text), max=MAX_CHARS))
+            return
+        paragraphs = split_paragraphs(text)
+        if not paragraphs:
+            self.notify(t("notice.clip_empty"), icon=QSystemTrayIcon.MessageIcon.Information)
+            return
+        old = self.clip_window
+        if old is not None and not old.pinned:
+            old.close()
+        self._reload_glossary()
+        from .ui.clip_window import ClipWindow
+        w = ClipWindow(paragraphs, self.router, self.history, cursor=QCursor.pos())
+        w.closed.connect(self._on_overlay_closed)
+        self.overlays.append(w)
+        self.clip_window = w
+        w.show()
+        w.raise_()
+        w.activateWindow()
 
     def shutdown(self) -> None:
         first, self._shut = not self._shut, True
@@ -478,6 +570,7 @@ class ShotTransApp(QObject):
                 pass
         self.hotkey.unregister()
         self._qapp.removeNativeEventFilter(self.hotkey)
+        self._drop_clip_hotkey()
         for o in list(self.overlays):
             o.close()  # 钉住的也关：pinned 只影响失焦自动关闭，不拦 close()
         self.tray.hide()

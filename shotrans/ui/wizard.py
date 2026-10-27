@@ -15,6 +15,7 @@ from ..config import ConfigError
 from ..doctor import LANG_SETTINGS_URL
 from ..i18n import t
 from ..ocr import LANG_EN, LANG_ZH, available_languages
+from ..hotkey import same_combo
 from .hotkey_edit import HotkeyEdit
 from .service_form import ServiceForm
 
@@ -209,6 +210,8 @@ class Wizard(QWidget):
         # 以程序当前配置为底（首次运行时就是默认配置），只改引导里填的几项，不丢掉别处已有的设置
         new = dataclasses.replace(self._app.config, language=i18n.language(), autostart=self.autostart.isChecked(),
                                   primary=self.form.service(), hotkey=self.hotkey_edit.spec())
+        if same_combo(new.hotkey, new.clip_hotkey):  # 截图键选了「复制后翻译」的键：让给截图，那个功能先关着
+            new = dataclasses.replace(new, clip_hotkey="")
         try:
             self._app.save_config(new)  # 没生效的项（如开机自启写不进）由托盘程序自己汇总成一条提醒
         except ConfigError as e:

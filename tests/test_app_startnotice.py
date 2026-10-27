@@ -14,7 +14,7 @@ from shotrans.migrate import MigrateResult
 from shotrans.runtime import SingleInstance
 from shotrans.ui.notice import NoticePopup
 
-CFG = '[hotkey]\ncapture = "Ctrl+Alt+Shift+F10"\n'
+CFG = '[hotkey]\ncapture = "Ctrl+Alt+Shift+F10"\nclipboard = ""\n'
 STARTED_ZH = "截图翻译已在后台运行，按 Ctrl+Alt+Shift+F10 截图翻译；图标在右下角托盘里，可能收在 ^ 里面。"
 
 

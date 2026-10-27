@@ -15,7 +15,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from . import secret
-from .hotkey import parse_hotkey
+from .hotkey import parse_hotkey, same_combo
 from .i18n import t
 from .tomlw import dump_toml
 from .translate.vllm import THINKING_OFF_FIELDS
@@ -64,6 +64,7 @@ class Config:
     primary: ServiceConfig = field(default_factory=ServiceConfig)
     backup: ServiceConfig = field(default_factory=ServiceConfig)
     hotkey: str = "Ctrl+Alt+Q"
+    clip_hotkey: str = "Ctrl+Alt+C"  # 复制后按它翻译剪贴板；空 = 不用这个功能
     domain_hint: str = ""
     chunk_chars: int = 600
     chunk_max_segments: int = 8
@@ -85,6 +86,7 @@ class Config:
 _SCHEMA = [
     ("general", "language", "language", str),
     ("hotkey", "capture", "hotkey", str),
+    ("hotkey", "clipboard", "clip_hotkey", str),
     ("translate", "domain_hint", "domain_hint", str),
     ("translate", "chunk_chars", "chunk_chars", int),
     ("translate", "chunk_max_segments", "chunk_max_segments", int),
@@ -124,6 +126,10 @@ def describe(e: FieldError) -> str:
         return t("config.err.field_type", field=e.field, type=e.detail, shown=type(e.value).__name__)
     if e.code == "hotkey":
         return t("config.err.hotkey", detail=e.detail)
+    if e.code == "clip_hotkey":
+        return t("config.err.clip_hotkey", detail=e.detail)
+    if e.code == "hotkey_same":
+        return t("config.err.hotkey_same", hotkey=e.value)
     if e.code == "min1":
         return t("config.err.min1", field=e.field, value=repr(e.value))
     if e.code == "positive":
@@ -185,6 +191,18 @@ def validate(c: Config) -> list[FieldError]:
         parse_hotkey(c.hotkey)
     except ValueError as e:
         errs.append(FieldError("[hotkey] capture", "hotkey", c.hotkey, str(e)))
+    if c.clip_hotkey.strip():  # 空 = 不用「复制后翻译」
+        try:
+            clip = parse_hotkey(c.clip_hotkey)
+        except ValueError as e:
+            errs.append(FieldError("[hotkey] clipboard", "clip_hotkey", c.clip_hotkey, str(e)))
+        else:
+            try:
+                same = clip == parse_hotkey(c.hotkey)
+            except ValueError:
+                same = False  # 截图快捷键写错已在上面报过
+            if same:
+                errs.append(FieldError("[hotkey] clipboard", "hotkey_same", c.clip_hotkey))
     for name, attr in _MIN1:
         if getattr(c, attr) < 1:
             errs.append(FieldError(name, "min1", getattr(c, attr)))
@@ -284,6 +302,9 @@ def config_from_raw(raw: dict) -> Config:
     if auto is not None and not isinstance(auto, bool):
         raise ConfigError(t("config.err.type", section="general", key="autostart", type="bool", shown=repr(auto)))
     values["autostart"] = auto
+    if "clipboard" not in raw.get("hotkey", {}) and same_combo(values["clip_hotkey"], values["hotkey"]):
+        # 老配置的截图键正好是「复制后翻译」的默认键：不能因为新功能的默认值撞了就启动不了，这个功能先关着
+        values["clip_hotkey"] = ""
     if legacy and "enabled" not in raw.get("tencent", {}):
         values["tencent_enabled"] = LEGACY_TENCENT_IF_UNSET
     values["primary"] = _service(raw.get("primary", {}), "primary")
@@ -320,7 +341,7 @@ def config_to_dict(c: Config) -> dict[str, dict]:
         "primary": svc(c.primary),
         "backup": svc(c.backup),
         "tencent": {"enabled": c.tencent_enabled, "connect": c.tencent_connect_timeout},
-        "hotkey": {"capture": c.hotkey},
+        "hotkey": {"capture": c.hotkey, "clipboard": c.clip_hotkey},
         "translate": {"domain_hint": c.domain_hint, "chunk_chars": c.chunk_chars,
                       "chunk_max_segments": c.chunk_max_segments, "max_concurrency": c.max_concurrency},
         "timeouts": {"connect": c.connect_timeout, "first_token": c.first_token_timeout,

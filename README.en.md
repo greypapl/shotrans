@@ -27,6 +27,9 @@ Requires Windows 10 or 11 with the OCR language packs for English and/or Chinese
 1. On first run, pick a translation service in the wizard, enter your API key and run the connection test.
 2. Press `Ctrl+Alt+Q` (configurable) and select the area to translate.
 3. Hover to see the original, double-click to copy, right-click a paragraph to retranslate with another service, right-click empty space or press `Esc` to close.
+4. If a word comes out wrong, right-click that paragraph → "Add to glossary…", select the word and enter the translation you want. It is saved to the glossary and every paragraph using it is retranslated.
+
+Text you can copy doesn't need a screenshot: press `Ctrl+C`, then `Ctrl+Alt+C` (configurable), and the translation pops up next to the mouse. Chinese goes to English, which is handy for turning a Chinese draft into English with your own glossary.
 
 Past translations, including the screenshots, are under "History" in the tray menu.
 

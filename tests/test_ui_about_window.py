@@ -7,7 +7,7 @@ from tests.ui_fakes import FakeApp
 
 
 def test_version():
-    assert shotrans.__version__ == "1.0.0"
+    assert shotrans.__version__ == "1.1.0"
 
 
 @pytest.fixture
@@ -26,7 +26,7 @@ def make(qtbot, tmp_path, track):
 
 def test_shows_version(make):
     w, _ = make()
-    assert "1.0.0" in w.version_label.text()
+    assert "1.1.0" in w.version_label.text()
 
 
 def test_license_text_lists_components(make):

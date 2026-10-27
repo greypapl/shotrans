@@ -14,17 +14,20 @@ import logging
 import queue
 import threading
 import time
+from pathlib import Path
 from typing import Callable
 
 from PySide6.QtCore import QEvent, QPoint, QRect, Qt, QTimer, Signal
 from PySide6.QtGui import QColor, QContextMenuEvent, QGuiApplication, QPainter, QPen, QPixmap
-from PySide6.QtWidgets import QHBoxLayout, QLabel, QMenu, QToolButton, QToolTip, QWidget
+from PySide6.QtWidgets import QDialog, QHBoxLayout, QLabel, QMenu, QToolButton, QToolTip, QWidget
 
 from . import i18n
+from .glossary import load_glossary
 from .i18n import N_, t
 from .qtimage import pil_to_qimage
 from .session import Session
 from .snapshot import build_snapshot, write_snapshot
+from .term_add import mentions
 
 log = logging.getLogger(__name__)
 
@@ -82,7 +85,8 @@ class OverlayWindow(QWidget):
     closed = Signal(object)
 
     def __init__(self, session: Session, rect: QRect, ocr_fn: Callable, router, history=None,
-                 open_window: Callable[[str, str | None], object] | None = None):
+                 open_window: Callable[[str, str | None], object] | None = None,
+                 glossary_path: Path | None = None, on_glossary_saved: Callable[[str, str], None] | None = None):
         flags = Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.Tool
         super().__init__(None, flags)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
@@ -94,6 +98,8 @@ class OverlayWindow(QWidget):
         self._router = router
         self._history = history
         self._open_window = open_window  # 打开设置/自检窗口（T9 状态栏链接用；这里只存）
+        self._glossary_path = glossary_path          # 有它右键菜单才有「添加术语…」
+        self._on_glossary_saved = on_glossary_saved  # 加完术语通知托盘程序（刷新开着的设置窗口）
         self.pinned = False
         self._cancel = threading.Event()
         self._press_global: QPoint | None = None
@@ -102,6 +108,7 @@ class OverlayWindow(QWidget):
         self._menu_open = False
         self._exporting = False             # 导出在后台进行中：防止连点写两份
         self._error: str | None = None      # 翻译出错：随下一次翻译清除
+        self._done_gen: int | None = None   # 翻译全部交回的那一代（加术语时据此判断首轮翻译完了没有）
         self._ocr_error: str | None = None  # 识别失败：一直保留
         self._status_key = N_("status.ocr_running")
         self._ocr_missing: tuple[str, ...] = ()  # 没装的 OCR 语言包（只装了一个时状态栏注明）
@@ -304,7 +311,10 @@ class OverlayWindow(QWidget):
             self._dirty = True
 
     def _on_finished(self, gen: int) -> None:
-        if gen != self.session.generation or self._history is None:
+        if gen != self.session.generation:
+            return
+        self._done_gen = gen
+        if self._history is None:
             return
         # 要存图：在界面线程里取两张 PIL 副本（原图、译文图）；PNG 编码和写盘交给后台线程
         images = None
@@ -470,6 +480,10 @@ class OverlayWindow(QWidget):
         menu.addSeparator()
         a_src = menu.addAction(t("menu.copy_original"))
         a_dst = menu.addAction(t("menu.copy_translation"))
+        a_term = None
+        if self._glossary_path is not None:
+            menu.addSeparator()
+            a_term = menu.addAction(t("menu.add_term"))
         self._menu_open = True
         try:
             chosen = menu.exec(e.globalPos())
@@ -484,6 +498,47 @@ class OverlayWindow(QWidget):
             QGuiApplication.clipboard().setText(seg.text)
         elif chosen is a_dst:
             QGuiApplication.clipboard().setText(self.session.translation_of(seg))
+        elif a_term is not None and chosen is a_term:
+            self._add_term(seg)
+
+    def _term_dialog(self, seg):
+        """单独一个方法：测试里换成替身，不弹真对话框。"""
+        from .ui.term_dialog import TermDialog
+        return TermDialog(seg.text, self._glossary_path, parent=self)
+
+    def _add_term(self, seg) -> None:
+        """对话框里存进术语表后：路由立刻换用新术语表，用到这个词的段（连同右键的这一段）照常再翻一次；
+        旧译文进撤销栈（同「重翻这一段」），右键「撤销重翻」能退回。"""
+        dlg = self._term_dialog(seg)
+        self._menu_open = True  # 对话框开着时浮窗失焦不算「点到外面」
+        try:
+            ok = dlg.exec() == QDialog.DialogCode.Accepted and dlg.saved is not None
+        finally:
+            self._menu_open = False
+        if not ok:
+            return
+        en, zh = dlg.saved
+        try:
+            self._router.glossary = load_glossary(self._glossary_path)
+        except Exception:  # 刚写成功又读不了（极少见）：这次照旧用老术语表翻
+            log.exception("加术语后重读术语表失败")
+        if self._on_glossary_saved is not None:
+            try:
+                self._on_glossary_saved(en, zh)
+            except Exception:
+                log.exception("通知术语表已更新失败")
+        segs = mentions(self.session.segments, en, zh)
+        if seg not in segs and not seg.skip:
+            segs = sorted(segs + [seg], key=lambda s: s.idx)
+        self._toast(t("toast.term_saved", n=len(segs)))
+        if self._done_gen != self.session.generation:
+            # 首轮还没翻完：在途的那一轮开头就按旧术语表备好了每一段，晚到的结果会盖掉只重翻几段的结果。整轮重来
+            self._start_translate()
+            return
+        if segs:
+            threading.Thread(target=_subset_worker, args=(self._router, segs, self.session.direction,
+                                                          self.session.generation, self._cancel, self._inbox),
+                             daemon=True).start()
 
     def enterEvent(self, e) -> None:
         self._bar.show()
@@ -557,6 +612,22 @@ def _history_images_worker(write: Callable, image_id: str, original, rendered) -
         write(image_id, original, rendered)
     except Exception:  # write_images 自己不抛；替身或将来改动万一抛了，也只记日志
         log.exception("历史截图保存失败")
+
+
+def _subset_worker(router, segs, direction: str, gen: int, cancel: threading.Event, inbox: queue.Queue) -> None:
+    """加术语后只重翻用到它的几段：走普通翻译流程（不换服务），每段结果按「重翻」交回（旧译文进撤销栈）。
+    没翻成的段（服务都不可用，给回的是原文）不交回，保留原来的译文。都交回后发 finished，历史跟着更新。"""
+    def emit(r) -> None:
+        if r.is_translation:
+            inbox.put(("retranslated", gen, r))
+
+    try:
+        router.translate(segs, direction, emit, cancel)
+    except Exception:
+        log.exception("加术语后重翻出错")
+        return
+    if not cancel.is_set():
+        inbox.put(("finished", gen, None))
 
 
 def _retranslate_worker(router, seg, direction: str, current: str, gen: int, inbox: queue.Queue) -> None:

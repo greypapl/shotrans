@@ -187,7 +187,7 @@ def test_language_switch_retranslates_tray(make):
     a = make()
     a.apply_config(Config(hotkey=BASE.hotkey, language="en"))
     texts = [x.text() for x in a._menu.actions() if not x.isSeparator()]
-    assert texts == ["Translate a screenshot (Ctrl+Alt+Shift+F10)", "History…", "Settings…", "Diagnostics…",
+    assert texts == ["Translate a screenshot (Ctrl+Alt+Shift+F10)", "Translate clipboard (Ctrl+Alt+C)", "History…", "Settings…", "Diagnostics…",
                      "Reload config", "About…", "Quit"]
 
 

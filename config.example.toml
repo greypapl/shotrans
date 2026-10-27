@@ -29,6 +29,7 @@ connect = 6.0            # 秒：连接超时（含 TLS 握手）
 
 [hotkey]
 capture = "Ctrl+Alt+Q"
+clipboard = "Ctrl+Alt+C"   # 复制文字后按它翻译剪贴板（写论文时中译英很顺手）；写 "" = 不用这个功能
 
 [translate]
 domain_hint = ""         # 领域提示，例如 "心理学和医学学术论文"

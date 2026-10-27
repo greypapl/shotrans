@@ -105,6 +105,27 @@ def fake_clipboard(request, monkeypatch):
     return fake
 
 
+@pytest.fixture(autouse=True)
+def _no_real_clip_hotkey(monkeypatch):
+    """「复制后翻译」的默认键 Ctrl+Alt+C 是真实常用组合：托盘程序的测试里不真去注册它
+    （别的软件占着会多弹一条提醒，测试结果跟着本机环境变；也别抢用户的键）。
+    假装注册成功；测注册行为的测试用自己的冷门组合，照常真注册。"""
+    from shotrans import app as app_mod
+    from shotrans.config import Config
+    from shotrans.hotkey import GlobalHotkey, parse_hotkey
+
+    real = GlobalHotkey.register
+    default = parse_hotkey(Config().clip_hotkey)
+
+    def register(self):
+        if self.id == app_mod.CLIP_HOTKEY_ID and (self.mods, self.vk) == default:
+            self.registered = True
+            return True
+        return real(self)
+
+    monkeypatch.setattr(GlobalHotkey, "register", register)
+
+
 @pytest.fixture
 def track(qtbot):
     """窗口带 WA_DeleteOnClose，qtbot.addWidget 收尾时会对已删除的对象再 close 一次而报错，所以自己收尾。"""

@@ -312,3 +312,14 @@ def test_trial_note_follows_language(tmp_path, track, monkeypatch):
     w = _wizard_with_state(tmp_path, track, False)
     i18n.set_language("en")
     assert w.autostart_trial.text() == "Trial mode (temporary data folder) doesn't change start-with-Windows."
+
+
+def test_finish_with_clip_default_as_capture_turns_clip_off(qtbot, make):
+    """截图键选了「复制后翻译」的默认键 Ctrl+Alt+C：让给截图，复制翻译先关着，不能存不进去。"""
+    w, app = make()
+    _to_service(w)
+    _pass_test(qtbot, w)
+    w.next()
+    w.hotkey_edit.set_spec("Ctrl+Alt+C")
+    assert w.finish() is True
+    assert app.saved[0].hotkey == "Ctrl+Alt+C" and app.saved[0].clip_hotkey == ""

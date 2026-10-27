@@ -48,7 +48,7 @@ def make(qapp, env, tmp_path):
 
     def _make(answers=()):
         env["answers"][:] = list(answers)
-        (tmp_path / "config.toml").write_text(f'[hotkey]\ncapture = "{F10}"\n', encoding="utf-8")
+        (tmp_path / "config.toml").write_text(f'[hotkey]\ncapture = "{F10}"\nclipboard = ""\n', encoding="utf-8")
 
         def win(kind):
             def build(page):
@@ -71,14 +71,14 @@ def make(qapp, env, tmp_path):
 def test_same_combo_reregistered_after_startup_failure(make, env):
     a = make(answers=[False])  # 启动时被占用
     assert a.own_hotkey() is None
-    failed = a.apply_config(Config(hotkey=F10))  # 用户关掉了占用的程序，原样保存
+    failed = a.apply_config(Config(clip_hotkey="", hotkey=F10))  # 用户关掉了占用的程序，原样保存
     assert failed == [] and a.hotkey.registered is True and a.own_hotkey() == F10
     assert env["reg"] == [0x79, 0x79]
 
 
 def test_same_combo_other_case_not_reregistered(make, env):
     a = make()
-    failed = a.apply_config(Config(hotkey="ctrl+alt+shift+f10"))
+    failed = a.apply_config(Config(clip_hotkey="", hotkey="ctrl+alt+shift+f10"))
     assert failed == [] and env["reg"] == [0x79] and env["unreg"] == []
     assert a.hotkey.registered is True
 
@@ -86,7 +86,7 @@ def test_same_combo_other_case_not_reregistered(make, env):
 def test_invalid_hotkey_keeps_old_and_other_steps_run(make, env):
     a = make()
     old = a.hotkey
-    failed = a.apply_config(Config(hotkey="Q", autostart=True, language="en", history_limit=5))
+    failed = a.apply_config(Config(clip_hotkey="", hotkey="Q", autostart=True, language="en", history_limit=5))
     assert failed == ["hotkey Q (taken; the old hotkey was restored)"]
     assert a.hotkey is old and old.registered is True and env["unreg"] == []
     assert a.config.hotkey == F10 and a.history.limit == 5
@@ -97,7 +97,7 @@ def test_invalid_hotkey_keeps_old_and_other_steps_run(make, env):
 def test_new_and_old_both_fail_reports_no_hotkey(make, env):
     a = make()
     env["answers"][:] = [False, False]  # 新键失败，旧键也没能重新注册
-    failed = a.apply_config(Config(hotkey="Ctrl+Alt+Shift+F12"))
+    failed = a.apply_config(Config(clip_hotkey="", hotkey="Ctrl+Alt+Shift+F12"))
     assert failed == ["快捷键 Ctrl+Alt+Shift+F12（注册失败，原快捷键也没能恢复，目前没有可用的快捷键）"]
     assert a.own_hotkey() is None
     a.notice.clicked.emit()
@@ -107,7 +107,7 @@ def test_new_and_old_both_fail_reports_no_hotkey(make, env):
 def test_restored_failure_bubble_opens_hotkey_page(make, env):
     a = make()
     env["answers"][:] = [False]  # 新键失败，旧键恢复成功
-    assert a.apply_config(Config(hotkey="Ctrl+Alt+Shift+F12")) == ["快捷键 Ctrl+Alt+Shift+F12（被占用，已恢复原快捷键）"]
+    assert a.apply_config(Config(clip_hotkey="", hotkey="Ctrl+Alt+Shift+F12")) == ["快捷键 Ctrl+Alt+Shift+F12（被占用，已恢复原快捷键）"]
     a.notice.clicked.emit()
     assert env["opened"] == [("settings", "hotkey")]
 
@@ -119,7 +119,7 @@ def test_non_hotkey_failure_bubble_has_no_target(make, env):
         raise RuntimeError("坏了")
 
     a._router_factory = boom
-    assert a.apply_config(Config(hotkey=F10)) == ["翻译服务"]
+    assert a.apply_config(Config(clip_hotkey="", hotkey=F10)) == ["翻译服务"]
     a.notice.clicked.emit()
     assert env["opened"] == []
 

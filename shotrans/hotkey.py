@@ -10,6 +10,8 @@ from PySide6.QtCore import QAbstractNativeEventFilter
 MOD_ALT, MOD_CONTROL, MOD_SHIFT, MOD_WIN, MOD_NOREPEAT = 0x1, 0x2, 0x4, 0x8, 0x4000
 WM_HOTKEY = 0x0312
 _MODS = {"ctrl": MOD_CONTROL, "control": MOD_CONTROL, "alt": MOD_ALT, "shift": MOD_SHIFT, "win": MOD_WIN}
+# 复制 / 粘贴 / 剪切：注册成全局快捷键后，所有程序都不能用它复制粘贴了（「复制后翻译」最容易让人想填 Ctrl+C）
+RESERVED = frozenset((MOD_CONTROL, ord(k)) for k in "CVX")
 
 
 def parse_hotkey(spec: str) -> tuple[int, int]:
@@ -24,10 +26,20 @@ def parse_hotkey(spec: str) -> tuple[int, int]:
         mods |= _MODS[p]
     key = parts[-1]
     if len(key) == 1 and key.isascii() and key.isalnum():
+        if (mods, ord(key.upper())) in RESERVED:
+            raise ValueError(f"{spec} 是复制/粘贴/剪切，不能用作快捷键")
         return mods, ord(key.upper())
     if key.startswith("f") and key[1:].isdigit() and 1 <= int(key[1:]) <= 24:
         return mods, 0x70 + int(key[1:]) - 1
     raise ValueError(f"不认识的键：{key}")
+
+
+def same_combo(a: str, b: str) -> bool:
+    """按解析结果比较（Ctrl+Alt+Q 和 ctrl+alt+q 是同一个）；任一个写错或为空就算不同。"""
+    try:
+        return parse_hotkey(a) == parse_hotkey(b)
+    except ValueError:
+        return False
 
 
 class GlobalHotkey(QAbstractNativeEventFilter):

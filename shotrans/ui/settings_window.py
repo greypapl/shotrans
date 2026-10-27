@@ -22,6 +22,7 @@ PAGES = ("service", "hotkey", "glossary", "general", "advanced")
 TAB_KEYS = (N_("settings.tab.service"), N_("settings.tab.hotkey"), N_("settings.tab.glossary"),
             N_("settings.tab.general"), N_("settings.tab.advanced"))
 DEFAULT_HOTKEY = "Ctrl+Alt+Q"
+DEFAULT_CLIP_HOTKEY = Config().clip_hotkey
 SECTION_PAGES = {"[primary]": "service", "[backup]": "service", "[hotkey]": "hotkey", "[general]": "general",
                  "[history]": "general"}
 # (Config 字段, 名称键, 说明键, 整数?, 最小, 最大, 步长)
@@ -89,11 +90,25 @@ class SettingsWindow(QWidget):
         self.lbl_hotkey = QLabel()
         self.btn_hotkey_default = QPushButton()
         self.btn_hotkey_default.clicked.connect(lambda: self.hotkey_edit.set_spec(DEFAULT_HOTKEY))
+        self.clip_edit = HotkeyEdit(app.hotkey_free, allow_empty=True)  # 「复制后翻译」：空着 = 不用
+        self.lbl_clip = QLabel()
+        self.lbl_clip.setWordWrap(True)
+        self.btn_clip_default, self.btn_clip_off = QPushButton(), QPushButton()
+        self.btn_clip_default.clicked.connect(lambda: self.clip_edit.set_spec(DEFAULT_CLIP_HOTKEY))
+        self.btn_clip_off.clicked.connect(lambda: self.clip_edit.set_spec(""))
         p2 = QWidget()
         l2 = QVBoxLayout(p2)
         l2.addWidget(self.lbl_hotkey)
         l2.addWidget(self.hotkey_edit)
         l2.addWidget(self.btn_hotkey_default)
+        l2.addSpacing(16)
+        l2.addWidget(self.lbl_clip)
+        l2.addWidget(self.clip_edit)
+        clip_row = QHBoxLayout()
+        clip_row.addWidget(self.btn_clip_default)
+        clip_row.addWidget(self.btn_clip_off)
+        clip_row.addStretch(1)
+        l2.addLayout(clip_row)
         l2.addStretch(1)
 
         # ③ 术语表
@@ -182,6 +197,9 @@ class SettingsWindow(QWidget):
         self.domain.setPlaceholderText(t("settings.domain_placeholder"))
         self.lbl_hotkey.setText(t("settings.hotkey_label"))
         self.btn_hotkey_default.setText(t("settings.hotkey_default"))
+        self.lbl_clip.setText(t("settings.clip_label"))
+        self.btn_clip_default.setText(t("settings.hotkey_default"))
+        self.btn_clip_off.setText(t("settings.clip_off"))
         self.lbl_language.setText(t("settings.language"))
         self.autostart.setText(t("settings.autostart"))
         self.autostart_trial.setText(t("settings.autostart_trial"))
@@ -208,6 +226,8 @@ class SettingsWindow(QWidget):
         self.domain.setText(c.domain_hint)
         self._loaded_hotkey = c.hotkey
         self.hotkey_edit.set_spec(c.hotkey)
+        self._loaded_clip = c.clip_hotkey
+        self.clip_edit.set_spec(c.clip_hotkey)
         self.language.setCurrentIndex(max(0, self.language.findData(c.language)))
         self.autostart.setChecked(c.autostart if c.autostart is not None else bool(self._autostart_state()))
         self.history_limit.setValue(c.history_limit)
@@ -226,7 +246,7 @@ class SettingsWindow(QWidget):
             self._app.config, language=self.language.currentData(), autostart=self.autostart.isChecked(),
             primary=self.primary.service(),
             backup=ServiceConfig() if self.backup.is_empty() else self.backup.service(),
-            hotkey=self.hotkey_edit.spec(), domain_hint=self.domain.text().strip(),
+            hotkey=self.hotkey_edit.spec(), clip_hotkey=self.clip_edit.spec(), domain_hint=self.domain.text().strip(),
             tencent_enabled=self.tencent.isChecked(), history_limit=self.history_limit.value(),
             history_save_images=self.history_images.isChecked(), **values)
 
@@ -241,6 +261,8 @@ class SettingsWindow(QWidget):
         # 被占用只在用户改过快捷键时才挡：启动时就被占、用户没动，照常保存（apply 会重新试注册）。
         # 写错、空着由下面的 config.validate 报（[hotkey] capture → 快捷键页），这里不重复查
         if hk.taken and hk.spec() != self._loaded_hotkey:
+            bad.append("hotkey")
+        if self.clip_edit.taken and self.clip_edit.spec() != self._loaded_clip:
             bad.append("hotkey")
         new = self.collect()
         bad += [_page_of(e.field) for e in config.validate(new)]
@@ -272,6 +294,7 @@ class SettingsWindow(QWidget):
                 self._warn(t("settings.save_failed", error=e))
             return False
         self._loaded_hotkey = new.hotkey  # 已存进配置：之后再按「应用」不算「改过」
+        self._loaded_clip = new.clip_hotkey
         if failed:
             self.error_label.setText(t("settings.partly_applied", items=t("list.sep").join(failed)))
         return True

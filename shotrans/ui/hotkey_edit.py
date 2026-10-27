@@ -51,9 +51,10 @@ class _KeyLine(QLineEdit):
 class HotkeyEdit(QWidget):
     changed = Signal(str)
 
-    def __init__(self, checker: Callable[[str], bool], parent=None):
+    def __init__(self, checker: Callable[[str], bool], parent=None, allow_empty: bool = False):
         super().__init__(parent)
         self._checker = checker
+        self._allow_empty = allow_empty  # 空着 = 不用这个功能（「复制后翻译」的键）
         self._spec = ""
         self.taken = False
         self.invalid = False
@@ -68,18 +69,22 @@ class HotkeyEdit(QWidget):
 
     def retranslate(self, *_) -> None:
         self.edit.setPlaceholderText(t("hotkey.placeholder"))
-        if self._spec:
+        if self._spec or self._allow_empty:
             self._show()
 
     def spec(self) -> str:
         return self._spec
 
     def is_valid(self) -> bool:
-        return bool(self._spec) and not self.invalid and not self.taken
+        return (bool(self._spec) or self._allow_empty) and not self.invalid and not self.taken
 
     def set_spec(self, spec: str) -> None:
         self._spec = spec
         self.edit.setText(spec)
+        if self._allow_empty and not spec.strip():
+            self.invalid = self.taken = False
+            self._show()
+            return
         try:
             parse_hotkey(spec)
             self.invalid = False
@@ -91,7 +96,9 @@ class HotkeyEdit(QWidget):
     def _show(self) -> None:
         bad = self.invalid or self.taken
         self.edit.setStyleSheet(RED if bad else "")
-        if self.invalid:
+        if self._allow_empty and not self._spec.strip():
+            self.status.setText(t("hotkey.off"))
+        elif self.invalid:
             self.status.setText(t("hotkey.invalid"))
         elif self.taken:
             self.status.setText(t("hotkey.taken", hotkey=self._spec))

@@ -21,6 +21,7 @@ base_url = "http://127.0.0.1:9/v1"
 api_key = "k"
 [hotkey]
 capture = "Ctrl+Alt+Shift+F10"
+clipboard = ""
 """
 
 FALLBACK = """
@@ -154,6 +155,7 @@ base_url = "http://127.0.0.1:9/v1"
 api_key = ""
 [hotkey]
 capture = "Ctrl+Alt+Shift+F10"
+clipboard = ""
 """
 
 

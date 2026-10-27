@@ -15,6 +15,7 @@ from .. import i18n
 from ..glossary_edit import (GlossaryDoc, Issue, Row, check_rows, export_doc, has_blocking, import_text, load_doc,
                              save_doc)
 from ..i18n import N_, t
+from ..term_add import put_term
 
 WARN_BG = QColor("#fef3c7")
 COMMENT_FG = QColor("#9ca3af")
@@ -180,6 +181,12 @@ class GlossaryPage(QWidget):
         self.table.setCurrentCell(i, 0)
         self._mark_dirty()
         return i
+
+    def merge_entry(self, src: str, dst: str) -> None:
+        """别处（浮窗「添加术语」）已写进文件的词条，并进这一页还没保存的表格：同一原文改那一行，否则加在最后。"""
+        put_term(self.doc, src, dst)
+        self._fill()
+        self._mark_dirty()
 
     def delete_selected(self) -> int:
         rows = sorted({ix.row() for ix in self.table.selectedIndexes()}, reverse=True)
