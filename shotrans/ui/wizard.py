@@ -7,12 +7,13 @@ import os
 from typing import Callable
 
 from PySide6.QtCore import QTimer
-from PySide6.QtWidgets import (QCheckBox, QComboBox, QHBoxLayout, QLabel, QMessageBox, QPushButton, QStackedWidget,
-                               QVBoxLayout, QWidget)
+from PySide6.QtGui import QFontDatabase, QGuiApplication
+from PySide6.QtWidgets import (QCheckBox, QComboBox, QHBoxLayout, QLabel, QMessageBox, QPlainTextEdit, QPushButton,
+                               QStackedWidget, QVBoxLayout, QWidget)
 
 from .. import autostart, i18n
 from ..config import ConfigError
-from ..doctor import LANG_SETTINGS_URL
+from ..doctor import LANG_SETTINGS_URL, ocr_install_command
 from ..i18n import t
 from ..ocr import LANG_EN, LANG_ZH, available_languages
 from ..hotkey import same_combo
@@ -27,7 +28,7 @@ class Wizard(QWidget):
 
     def __init__(self, app, languages_fn: Callable[[], list[str]] | None = None, tester=None, lister=None,
                  open_url: Callable[[str], object] | None = None, warn: Callable[[str], None] | None = None,
-                 autostart_state: Callable[[], bool] | None = None, parent=None):
+                 autostart_state: Callable[[], bool] | None = None, clipboard=None, parent=None):
         super().__init__(parent)
         self._app = app
         self._languages_fn = languages_fn or available_languages
@@ -59,6 +60,28 @@ class Wizard(QWidget):
         self.btn_recheck.clicked.connect(self.recheck)
         self.chk_continue = QCheckBox()
         self.chk_continue.toggled.connect(lambda _on: self._update_nav())
+        # 「设置」里下载失败（拒绝访问等）时的备用办法：管理员 PowerShell 命令，只列没装的
+        self.cmd_box = QWidget()
+        self.env_cmd_note, self.env_denied = QLabel(), QLabel()
+        self.env_cmd_note.setWordWrap(True)
+        self.env_denied.setWordWrap(True)
+        self.cmd_text = QPlainTextEdit()
+        self.cmd_text.setReadOnly(True)
+        self.cmd_text.setLineWrapMode(QPlainTextEdit.LineWrapMode.NoWrap)
+        self.cmd_text.setFont(QFontDatabase.systemFont(QFontDatabase.SystemFont.FixedFont))
+        self.cmd_text.setFixedHeight(self.cmd_text.fontMetrics().lineSpacing() * 2 + 16)
+        self.btn_copy_cmd = QPushButton()
+        self.btn_copy_cmd.clicked.connect(self.copy_command)
+        self._clipboard = clipboard
+        lc = QVBoxLayout(self.cmd_box)
+        lc.setContentsMargins(0, 8, 0, 0)
+        lc.addWidget(self.env_cmd_note)
+        lc.addWidget(self.cmd_text)
+        row_c = QHBoxLayout()
+        row_c.addWidget(self.btn_copy_cmd)
+        row_c.addStretch(1)
+        lc.addLayout(row_c)
+        lc.addWidget(self.env_denied)
         p1 = QWidget()
         l1 = QVBoxLayout(p1)
         for w in (self.env_title, self.lbl_en, self.lbl_zh, self.env_steps):
@@ -68,6 +91,7 @@ class Wizard(QWidget):
         row.addWidget(self.btn_recheck)
         row.addStretch(1)
         l1.addLayout(row)
+        l1.addWidget(self.cmd_box)
         l1.addWidget(self.chk_continue)
         l1.addStretch(1)
 
@@ -138,6 +162,9 @@ class Wizard(QWidget):
         self.btn_lang_settings.setText(t("wizard.env.open_settings"))
         self.btn_recheck.setText(t("wizard.env.recheck"))
         self.chk_continue.setText(t("wizard.env.continue_anyway"))
+        self.env_cmd_note.setText(t("wizard.env.cmd_note"))
+        self.env_denied.setText(t("wizard.env.denied"))
+        self.btn_copy_cmd.setText(t("wizard.env.copy_cmd"))
         self.service_title.setText(t("wizard.service.title"))
         self.service_note.setText(t("wizard.service.note"))
         self.finish_title.setText(t("wizard.finish.title"))
@@ -164,9 +191,18 @@ class Wizard(QWidget):
         for label, tag, key in ((self.lbl_en, LANG_EN, "wizard.env.ocr_en"), (self.lbl_zh, LANG_ZH, "wizard.env.ocr_zh")):
             label.setText(t("wizard.env.have" if tag in self._langs else "wizard.env.missing", name=t(key)))
         self.chk_continue.setVisible(not self._ocr_any())
+        cmd = ocr_install_command(tag for tag in (LANG_EN, LANG_ZH) if tag not in self._langs)
+        if cmd != self.cmd_text.toPlainText():
+            self.cmd_text.setPlainText(cmd)
+            self.btn_copy_cmd.setText(t("wizard.env.copy_cmd"))
+        self.cmd_box.setVisible(bool(cmd))
 
     def _ocr_any(self) -> bool:
         return bool(self._langs & {LANG_EN, LANG_ZH})
+
+    def copy_command(self) -> None:
+        (self._clipboard or QGuiApplication.clipboard()).setText(self.cmd_text.toPlainText())
+        self.btn_copy_cmd.setText(t("wizard.env.copied"))
 
     # ---------- 导航 ----------
     def page(self) -> str:

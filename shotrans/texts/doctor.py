@@ -30,7 +30,8 @@ ZH = {
                                 "请在设置里至少配置主服务",
     "doctor.ocr_ok": "已安装",
     "doctor.ocr_missing": "没有安装 {tag} 的 OCR 语言包（设置 → 时间和语言 → 语言和区域 → 添加对应语言，"
-                          "并勾选「光学字符识别」）",
+                          "并勾选「光学字符识别」）。「设置」里下载失败时，以管理员身份打开 PowerShell 运行：{cmd}。"
+                          "报「拒绝访问」就关掉「设置」窗口再试，不行就重启电脑或暂时关掉杀毒软件后再试",
     "doctor.primary_off": "未配置（不使用主服务）",
     "doctor.backup_off": "未配置（可以留空）",
     "doctor.key_unreadable": "API key 无法解密（可能换了电脑或 Windows 用户），请在设置里重新填写",
@@ -85,7 +86,10 @@ EN = {
                                 "service in Settings",
     "doctor.ocr_ok": "Installed",
     "doctor.ocr_missing": "The OCR language pack {tag} is not installed (Settings → Time & language → Language & "
-                          "region → add the language and tick Optical character recognition)",
+                          "region → add the language and tick Optical character recognition). If the download fails "
+                          "in Settings, open PowerShell as administrator and run: {cmd}. If it says access is "
+                          "denied, close Settings and try again; if that doesn't help, restart the PC or pause "
+                          "your antivirus and try again",
     "doctor.primary_off": "Not set up (primary service unused)",
     "doctor.backup_off": "Not set up (optional)",
     "doctor.key_unreadable": "The API key cannot be decrypted (another PC or Windows user?); enter it again in "

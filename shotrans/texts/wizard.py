@@ -18,6 +18,12 @@ ZH = {
                         "「中文（简体，中国）」，安装时勾选「光学字符识别」；装好后点「重新检测」。"
                         "只装一个也能用，只是另一种语言认得差。",
     "wizard.env.open_settings": "打开系统语言设置",
+    "wizard.env.cmd_note": "「设置」里下载失败（比如报错 0x80070005）时：在开始菜单搜索 PowerShell，右键选「以管理员身份运行」，"
+                           "把下面的命令粘贴进去回车，装好后点「重新检测」。",
+    "wizard.env.copy_cmd": "复制命令",
+    "wizard.env.copied": "已复制",
+    "wizard.env.denied": "还是报「拒绝访问」：先关掉「设置」窗口再运行一次；不行就重启电脑，重启后先别打开「设置」，直接再运行；"
+                         "再不行就暂时关掉杀毒软件再试。公司或学校管理的电脑可能要找管理员处理。",
     "wizard.env.recheck": "重新检测",
     "wizard.env.continue_anyway": "仍然继续（没有 OCR 语言包时翻译会失败）",
     "wizard.service.title": "翻译服务",
@@ -49,6 +55,14 @@ EN = {
                         "recognition; then click Check again. One pack is enough to start; the other language will "
                         "just be recognized less well.",
     "wizard.env.open_settings": "Open language settings",
+    "wizard.env.cmd_note": "If the download fails in Settings (for example error 0x80070005): search for PowerShell "
+                           "in the Start menu, right-click it, choose Run as administrator, paste the command below "
+                           "and press Enter, then click Check again.",
+    "wizard.env.copy_cmd": "Copy command",
+    "wizard.env.copied": "Copied",
+    "wizard.env.denied": "Still \"access denied\"? Close Settings and run it again. If that fails, restart the PC "
+                         "and run it again before opening Settings. If it still fails, pause your antivirus and "
+                         "try again. A PC managed by your company or school may need its administrator.",
     "wizard.env.recheck": "Check again",
     "wizard.env.continue_anyway": "Continue anyway (translation will fail without an OCR language pack)",
     "wizard.service.title": "Translation service",

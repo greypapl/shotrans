@@ -20,6 +20,8 @@ from .translate.factory import service_client
 Check = tuple[str, Callable[[], tuple[bool, str]]]
 FIX_LANG = "lang_settings"
 LANG_SETTINGS_URL = "ms-settings:regionlanguage"
+# Windows 可选功能里 OCR 组件的名字（注意中文是 zh-CN，不是 OCR 引擎报的 zh-Hans-CN）
+OCR_CAPABILITY = {"en-US": "Language.OCR~~~en-US~0.0.1.0", "zh-Hans-CN": "Language.OCR~~~zh-CN~0.0.1.0"}
 ITEM_LABEL_KEYS = {"ocr_en": N_("doctor.item.ocr_en"), "ocr_zh": N_("doctor.item.ocr_zh"),
                    "config": N_("doctor.item.config"), "primary": N_("doctor.item.primary"),
                    "backup": N_("doctor.item.backup"), "tencent": N_("doctor.item.tencent"),
@@ -61,12 +63,18 @@ def run_checks(checks: list[Check]) -> tuple[list[str], bool]:
     return lines, all_ok
 
 
+def ocr_install_command(tags) -> str:
+    """在管理员 PowerShell 里装这些 OCR 组件的命令，一个语言一行（「设置」里下载失败时用）。"""
+    return "\n".join(f'Add-WindowsCapability -Online -Name "{OCR_CAPABILITY[tag]}"'
+                     for tag in tags if tag in OCR_CAPABILITY)
+
+
 def check_ocr_lang(tag: str) -> tuple[bool, str]:
     from .ocr import available_languages
 
     if tag in available_languages():
         return True, t("doctor.ocr_ok")
-    return False, t("doctor.ocr_missing", tag=tag)
+    return False, t("doctor.ocr_missing", tag=tag, cmd=ocr_install_command([tag]))
 
 
 def _translate_one(client) -> tuple[str, float, str]:
