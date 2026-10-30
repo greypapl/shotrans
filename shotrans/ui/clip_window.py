@@ -139,7 +139,7 @@ class ClipWindow(QWidget):
 
     def service_status(self) -> str:
         services = {r.service for r in self.results.values()}
-        for name in ("none", "tencent", "fallback", "vllm"):
+        for name in ("none", "microsoft", "fallback", "vllm"):
             if name in services:
                 return name
         return "pending"

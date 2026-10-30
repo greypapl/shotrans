@@ -332,7 +332,7 @@ def test_show_does_not_show_hidden_unpinned(qtbot, make_app):
 
 def test_capturer_callbacks_wired_to_hide_show(qtbot, make_app):
     a = make_app()
-    # 改动说明：截屏前的回调从 _hide_overlays 换成 _before_grab（先预热腾讯连接再藏浮窗），藏浮窗见下一条
+    # 改动说明：截屏前的回调从 _hide_overlays 换成 _before_grab（先预热免费翻译层连接再藏浮窗），藏浮窗见下一条
     assert a.capturer._before == a._before_grab
     # 截屏后的回调从 _show_pinned 换成 _after_grab（放回钉住的浮窗，再弹截图期间推迟的提醒）
     assert a.capturer._after == a._after_grab

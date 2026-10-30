@@ -29,7 +29,7 @@ from .overlay import OverlayWindow
 from .runtime import ErrorReporter, SingleInstance
 from .session import Session
 from .translate.router import Router
-from .translate.tencent import TencentClient
+from .translate.microsoft import MicrosoftClient
 from .translate.factory import service_client
 from .ui.notice import NoticePopup
 from .ui.windows import WindowManager
@@ -66,11 +66,11 @@ def setup_logging(log_dir: Path) -> None:
 
 
 def build_router(c, glossary) -> Router:
-    """主服务 → 备用服务 → 腾讯，每层都可不配置：base_url 为空 = 不用这层；[tencent] enabled = false = 不用腾讯。
+    """主服务 → 备用服务 → 免费翻译（微软），每层都可不配置：base_url 为空 = 不用这层；[free] enabled = false = 不用免费翻译。
     熔断、限流等现有行为仍只针对主服务（Router.vllm）。"""
-    tencent = TencentClient(c.tencent_connect_timeout) if c.tencent_enabled else None
+    free = MicrosoftClient(c.free_connect_timeout) if c.free_enabled else None
     return Router(service_client(c, "primary"), service_client(c, "backup"), glossary, c.breaker_seconds,
-                  tencent=tencent, chunk_chars=c.chunk_chars, chunk_max_segments=c.chunk_max_segments,
+                  free=free, chunk_chars=c.chunk_chars, chunk_max_segments=c.chunk_max_segments,
                   max_concurrency=c.max_concurrency)
 
 
@@ -178,7 +178,7 @@ class ShotTransApp(QObject):
         if glossary_failed:
             self.notify(t("notice.glossary_startup", log=self.log_file))
         if not c.primary.configured:
-            # 没配主服务是允许的配置（走备用/腾讯），只记日志不弹提醒
+            # 没配主服务是允许的配置（走备用/免费翻译），只记日志不弹提醒
             log.info("没有配置主服务（[primary] base_url 为空），当前不使用主服务")
         for role, svc in ((N_("role.primary"), c.primary), (N_("role.backup"), c.backup)):
             if svc.configured and svc.key_unreadable:  # 没填地址 = 不用这层，key 解不开也无所谓
@@ -189,18 +189,18 @@ class ShotTransApp(QObject):
         self._check_ocr_languages(ocr_languages or available_languages)
         if self.needs_setup:
             QTimer.singleShot(0, self._open_setup_on_start)
-        self._warm_tencent()
+        self._warm_free()
 
-    def _warm_tencent(self) -> None:
-        """腾讯一层启用时，在后台线程里预热 TLS 连接（启动时、每次按快捷键时）。绝不阻塞界面线程。"""
-        tencent = getattr(self.router, "tencent", None)
-        warm = getattr(tencent, "warm_async", None)
+    def _warm_free(self) -> None:
+        """免费翻译层启用时，在后台线程里预热 TLS 连接（启动时、每次按快捷键时）。绝不阻塞界面线程。"""
+        free = getattr(self.router, "free", None)
+        warm = getattr(free, "warm_async", None)
         if warm is None:
             return
         try:
             warm()
         except Exception:  # 起线程失败之类：预热只是锦上添花
-            log.exception("腾讯预热启动失败")
+            log.exception("免费翻译预热启动失败")
 
     # ---------- 托盘 ----------
     def _build_tray(self) -> None:
@@ -458,8 +458,8 @@ class ShotTransApp(QObject):
 
     # ---------- 截图 ----------
     def _before_grab(self) -> None:
-        """按下快捷键（或点托盘）后、截屏前：趁用户框选的时间预热腾讯连接，再藏浮窗。"""
-        self._warm_tencent()
+        """按下快捷键（或点托盘）后、截屏前：趁用户框选的时间预热免费翻译的连接，再藏浮窗。"""
+        self._warm_free()
         self.notice.hide()  # 和浮窗一样：别被冻进截图（启动提示正写着「按 … 截图翻译」，读完马上按是常态）；截完不放回
         self._hide_overlays()
 

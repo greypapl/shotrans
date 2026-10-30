@@ -24,7 +24,7 @@ LANG_SETTINGS_URL = "ms-settings:regionlanguage"
 OCR_CAPABILITY = {"en-US": "Language.OCR~~~en-US~0.0.1.0", "zh-Hans-CN": "Language.OCR~~~zh-CN~0.0.1.0"}
 ITEM_LABEL_KEYS = {"ocr_en": N_("doctor.item.ocr_en"), "ocr_zh": N_("doctor.item.ocr_zh"),
                    "config": N_("doctor.item.config"), "primary": N_("doctor.item.primary"),
-                   "backup": N_("doctor.item.backup"), "tencent": N_("doctor.item.tencent"),
+                   "backup": N_("doctor.item.backup"), "free": N_("doctor.item.free"),
                    "hotkey": N_("doctor.item.hotkey"), "fonts": N_("doctor.item.fonts")}
 
 
@@ -112,23 +112,23 @@ def check_backup(cfg) -> tuple[bool, str]:
     return True, t("doctor.service_ok", model=name, secs=f"{secs:.1f}", text=text) + note
 
 
-def check_tencent(cfg) -> tuple[bool, str]:
+def check_free(cfg) -> tuple[bool, str]:
     if cfg is None:
         return False, t("doctor.cfg_missing")
-    if not cfg.tencent_enabled:
-        return True, t("doctor.tencent_off")
+    if not cfg.free_enabled:
+        return True, t("doctor.free_off")
     from .translate.base import TranslateError
-    from .translate.tencent import TencentClient
+    from .translate.microsoft import MicrosoftClient
 
     try:
-        _, secs, text = _translate_one(TencentClient(cfg.tencent_connect_timeout))
+        _, secs, text = _translate_one(MicrosoftClient(cfg.free_connect_timeout))
     except TranslateError as e:
-        return False, t("doctor.tencent_bad", kind=e.kind, detail=e.detail)
-    return True, t("doctor.tencent_ok", secs=f"{secs:.1f}", text=text)
+        return False, t("doctor.free_bad", kind=e.kind, detail=e.detail)
+    return True, t("doctor.free_ok", secs=f"{secs:.1f}", text=text)
 
 
 def no_service_configured(cfg) -> bool:
-    return not cfg.primary.configured and not cfg.backup.configured and not cfg.tencent_enabled
+    return not cfg.primary.configured and not cfg.backup.configured and not cfg.free_enabled
 
 
 def check_hotkey(cfg, own: str | None = None) -> tuple[bool, str]:
@@ -173,7 +173,7 @@ def build_items(home: Path, legacy: Path | None = None, own_hotkey: str | None =
         ("config", config_check, "settings:service", None),
         ("primary", lambda: check_primary(box.get("cfg")), "settings:service", "config"),
         ("backup", lambda: check_backup(box.get("cfg")), "settings:service", "config"),
-        ("tencent", lambda: check_tencent(box.get("cfg")), "settings:service", "config"),
+        ("free", lambda: check_free(box.get("cfg")), "settings:service", "config"),
         ("hotkey", lambda: check_hotkey(box.get("cfg"), own_hotkey), "settings:hotkey", None),  # 没配置时用默认键
         ("fonts", check_fonts, None, None),
     ]

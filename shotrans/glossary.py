@@ -40,7 +40,7 @@ def relevant(g: Glossary, text: str, direction: str) -> tuple[list[tuple[str, st
     几千条的术语表：先用子串查找（C 实现，很快）筛掉不可能出现的词条，只对剩下的跑正则（整词、大小写规则）。
     一个映射（指定译法）若每一处都落在另一个更长的命中词条里面（「无监督学习」里的「监督学习」、「毛利率」里的「利率」），
     就不写进提示词；它在别处还单独出现过就照旧给。比的时候 keep 词也算「更长的词条」（DAIC 在 DAIC-WOZ 里不给映射）。
-    keep 词本身从不因此去掉：它们不进提示词，只交给 protect() 换占位符，腾讯层不认映射，全靠占位符保持原样。"""
+    keep 词本身从不因此去掉：它们不进提示词，只交给 protect() 换占位符，免费翻译层（微软）的映射由客户端自己换成记号再换回（见 translate/microsoft.py）。"""
     folded = fold_case(text)
     spans: dict[str, list[tuple[int, int]]] = {}
 

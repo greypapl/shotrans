@@ -58,7 +58,7 @@ def test_mapping_inside_keep_term_dropped():
 
 
 def test_keep_term_inside_mapping_still_returned_and_protected():
-    """keep 词不进提示词，只用来换占位符：包含过滤只管映射，keep 照旧全给 protect()（腾讯层不认映射，全靠占位符）。"""
+    """keep 词不进提示词，只用来换占位符：包含过滤只管映射，keep 照旧全给 protect()（免费翻译层层不认映射，全靠占位符）。"""
     g = Glossary(mappings=(("PHQ-8 score", "PHQ-8 得分"),), keep=("PHQ-8",))
     maps, keep = relevant(g, "the PHQ-8 score", "en2zh")
     assert (maps, keep) == ([("PHQ-8 score", "PHQ-8 得分")], ["PHQ-8"])
@@ -70,14 +70,14 @@ def test_keep_term_inside_keep_term_both_returned():
     assert relevant(g, "the DAIC-WOZ set", "en2zh") == ([], ["DAIC", "DAIC-WOZ"])
 
 
-def test_tencent_layer_keeps_placeholder_for_keep_inside_mapping():
+def test_free_layer_keeps_placeholder_for_keep_inside_mapping():
     from tests.router_fakes import echo, make3, run, seg
     g = Glossary(mappings=(("API key", "API 密钥"),), keep=("API",))
     r, _, _, t = make3(None, None, echo("T"), glossary=g)
     res, _ = run(r, [seg(1, "Rotate the API key now")])
     sent = t.calls[0]["jobs"][0].text
     assert "⟨1⟩" in sent and "API" not in sent, sent
-    assert res[1].text == "TRotate the API key now" and res[1].service == "tencent"
+    assert res[1].text == "TRotate the API key now" and res[1].service == "microsoft"
 
 
 def test_same_span_both_kept():

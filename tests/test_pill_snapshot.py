@@ -72,7 +72,7 @@ def test_replay_old_snapshot_guesses_spans(tmp_path):
 
 
 def test_replay_old_snapshot_does_not_guess_for_noted_result(tmp_path):
-    # 腾讯不带占位符重翻的结果（带 note）：胶囊没受保护，不猜
+    # 免费翻译层不带占位符重翻的结果（带 note）：胶囊没受保护，不猜
     folder = _write(tmp_path, _session(note=NOTE_UNPROTECTED, spans=()))
     _tamper(folder, lambda d: [r.pop("pill_spans") for r in d["results"]])
     rep = replay_report(folder)

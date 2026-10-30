@@ -44,8 +44,8 @@ ADVANCED = [
      False, 0.5, 300.0, 0.5),
     ("breaker_seconds", N_("settings.adv.breaker_seconds"), N_("settings.adv.breaker_seconds_tip"),
      False, 1.0, 3600.0, 1.0),
-    ("tencent_connect_timeout", N_("settings.adv.tencent_connect_timeout"),
-     N_("settings.adv.tencent_connect_timeout_tip"), False, 0.5, 120.0, 0.5),
+    ("free_connect_timeout", N_("settings.adv.free_connect_timeout"),
+     N_("settings.adv.free_connect_timeout_tip"), False, 0.5, 120.0, 0.5),
 ]
 
 
@@ -71,14 +71,14 @@ class SettingsWindow(QWidget):
         self.box_primary, self.box_backup = QGroupBox(), QGroupBox()
         QVBoxLayout(self.box_primary).addWidget(self.primary)
         QVBoxLayout(self.box_backup).addWidget(self.backup)
-        self.tencent = QCheckBox()
+        self.free = QCheckBox()
         self.domain = QLineEdit()
         self.lbl_domain = QLabel()
         p1 = QWidget()
         l1 = QVBoxLayout(p1)
         l1.addWidget(self.box_primary)
         l1.addWidget(self.box_backup)
-        l1.addWidget(self.tencent)
+        l1.addWidget(self.free)
         row = QHBoxLayout()
         row.addWidget(self.lbl_domain)
         row.addWidget(self.domain, 1)
@@ -192,7 +192,7 @@ class SettingsWindow(QWidget):
             self.tabs.setTabText(i, t(key))
         self.box_primary.setTitle(t("settings.primary"))
         self.box_backup.setTitle(t("settings.backup"))
-        self.tencent.setText(t("settings.tencent"))
+        self.free.setText(t("settings.free"))
         self.lbl_domain.setText(t("settings.domain"))
         self.domain.setPlaceholderText(t("settings.domain_placeholder"))
         self.lbl_hotkey.setText(t("settings.hotkey_label"))
@@ -222,7 +222,7 @@ class SettingsWindow(QWidget):
     def load_from(self, c: Config) -> None:
         self.primary.set_service(c.primary)
         self.backup.set_service(c.backup)
-        self.tencent.setChecked(c.tencent_enabled)
+        self.free.setChecked(c.free_enabled)
         self.domain.setText(c.domain_hint)
         self._loaded_hotkey = c.hotkey
         self.hotkey_edit.set_spec(c.hotkey)
@@ -247,7 +247,7 @@ class SettingsWindow(QWidget):
             primary=self.primary.service(),
             backup=ServiceConfig() if self.backup.is_empty() else self.backup.service(),
             hotkey=self.hotkey_edit.spec(), clip_hotkey=self.clip_edit.spec(), domain_hint=self.domain.text().strip(),
-            tencent_enabled=self.tencent.isChecked(), history_limit=self.history_limit.value(),
+            free_enabled=self.free.isChecked(), history_limit=self.history_limit.value(),
             history_save_images=self.history_images.isChecked(), **values)
 
     def apply(self) -> bool:

@@ -99,14 +99,14 @@ def test_retranslate_one_carries_pill_spans():
     assert (out.text, out.service, out.pill_spans) == ("M:run now.md ok", "fallback", ((6, 12, 0),))
 
 
-def test_tencent_with_placeholders_carries_pill_spans():
+def test_free_with_placeholders_carries_pill_spans():
     r, v, m, t = make3(None, None, echo("T:"))
     res, _ = run(r, [pseg(1, "run now.md ok", ("now.md", 4))])
-    assert (res[1].service, res[1].pill_spans) == ("tencent", ((6, 12, 0),))
+    assert (res[1].service, res[1].pill_spans) == ("microsoft", ((6, 12, 0),))
 
 
-def test_tencent_unprotected_retry_has_no_pill_spans():
-    # 腾讯两次丢占位符、改翻不带占位符的原文：胶囊没受保护，位置拿不到——空（绘制时当文字画）
+def test_free_unprotected_retry_has_no_pill_spans():
+    # 免费翻译层两次丢占位符、改翻不带占位符的原文：胶囊没受保护，位置拿不到——空（绘制时当文字画）
     def script(svc, jobs, on):
         for j in jobs:
             on(j.idx, "丢了" if "⟨" in j.text else "T:" + j.text)

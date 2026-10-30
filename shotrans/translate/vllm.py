@@ -104,6 +104,9 @@ THINKING_OFF_FIELDS: dict[str, dict] = {
     "enable_thinking": {"enable_thinking": False},
     "deepseek": {"thinking": {"type": "disabled"}},
     "openai_reasoning": {"reasoning_effort": "none"},
+    # Ollama 的 OpenAI 兼容接口：reasoning_effort = "none" 关思考（https://docs.ollama.com/api/openai-compatibility，
+    # 2026-10-30 查）。和 openai_reasoning 分开：Ollama 认 max_tokens、不认 max_completion_tokens，temperature 照发
+    "ollama": {"reasoning_effort": "none"},
 }
 
 

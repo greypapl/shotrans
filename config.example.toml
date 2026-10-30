@@ -12,7 +12,7 @@ base_url = ""            # 例：https://api.deepseek.com；留空 = 不用主�
 api_key = ""
 model = ""               # 留空 = 用服务端 /models 的第一个
 thinking_off = false     # 关闭思考；按下一项的方式发送
-thinking_style = "chat_template_kwargs"  # chat_template_kwargs（自建 vLLM）/ enable_thinking（百炼、硅基流动）/ deepseek / openai_reasoning
+thinking_style = "chat_template_kwargs"  # chat_template_kwargs（自建 vLLM）/ enable_thinking（百炼、硅基流动）/ deepseek（也用于智谱）/ openai_reasoning / ollama
 
 [backup]                 # 备用服务：主服务失败时用；留空 = 不用
 preset = "custom"
@@ -22,8 +22,9 @@ model = ""
 thinking_off = false
 thinking_style = "chat_template_kwargs"
 
-[tencent]
-enabled = false          # true = 主/备都失败时用腾讯免 key 接口兜底（非官方，不稳定；识别出的文字会发给腾讯）。
+[free]
+enabled = false          # true = 主/备都用不了时用微软免费翻译（不用 key；非官方接口，可能失效；识别出的文字会发给微软）。
+                         # 主服务、备用都不填、只开它 = 只用免费翻译。以前这一节叫 [tencent]，旧名照读。
                          # 整行不写 = false（只有旧格式、用 vllm/fallback 两节的老配置不写时按 true 算，兼容旧版本）
 connect = 6.0            # 秒：连接超时（含 TLS 握手）
 

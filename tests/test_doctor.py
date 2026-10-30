@@ -54,7 +54,7 @@ def test_run_checks_exception_does_not_stop_later_checks():
 
 def test_build_checks_order(tmp_path):
     assert [n for n, _ in build_checks(tmp_path)] == [
-        "OCR 英文", "OCR 中文", "配置文件", "主服务", "备用服务", "腾讯兜底", "快捷键", "字体"]
+        "OCR 英文", "OCR 中文", "配置文件", "主服务", "备用服务", "微软免费翻译", "快捷键", "字体"]
 
 
 def test_config_check_reports_missing(tmp_path):
@@ -148,7 +148,7 @@ def test_fallback_without_config():
 
 
 def test_fallback_not_configured(tmp_path):
-    assert check_backup(_cfg(tmp_path)) == (True, "未配置（可以留空）")  # 改动说明：现在还有腾讯一层，「只用 vLLM」不再成立
+    assert check_backup(_cfg(tmp_path)) == (True, "未配置（可以留空）")  # 改动说明：现在还有免费翻译层一层，「只用 vLLM」不再成立
 
 
 def test_fallback_configured_with_key(tmp_path, make_server):

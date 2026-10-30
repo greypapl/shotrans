@@ -146,7 +146,7 @@ def test_router_log_scrubs_ascii_escaped_key(caplog):
 # ---------- 自检 ----------
 @pytest.mark.parametrize("key", [KEY_CN, KEY_ZW])
 def test_doctor_primary_check_and_report_have_no_key(key):
-    cfg = Config(primary=ServiceConfig(base_url=closed_port_url(), api_key=key), tencent_enabled=False)
+    cfg = Config(primary=ServiceConfig(base_url=closed_port_url(), api_key=key), free_enabled=False)
     ok, msg = doctor.run_one(lambda: doctor.check_primary(cfg))
     assert ok is False
     _clean(msg)

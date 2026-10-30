@@ -39,7 +39,7 @@ STATUS = {
     "skipped": (N_("status.skipped"), "#9ca3af"),
     "vllm": (N_("status.vllm"), "#22c55e"),
     "fallback": (N_("status.fallback"), "#3b82f6"),
-    "tencent": (N_("status.tencent"), "#a855f7"),
+    "microsoft": (N_("status.microsoft"), "#a855f7"),
     "none": (N_("status.none"), "#ef4444"),
 }
 OCR_LANG_KEYS = {"en-US": N_("lang.en-US"), "zh-Hans-CN": N_("lang.zh-Hans-CN")}
@@ -216,7 +216,7 @@ class OverlayWindow(QWidget):
             status = self.session.service_status()
             key, color = STATUS[status]
             text = t(self._status_key) if status == "pending" else t(key)
-            if status in ("fallback", "tencent") and self._router is not None and self._router.vllm_down():
+            if status in ("fallback", "microsoft") and self._router is not None and self._router.vllm_down():
                 # 主服务没配置时 vllm_down() 恒为 False，不会显示掉线附注
                 text += t("status.primary_auth") if self._vllm_auth_failed() else t("status.primary_down")
             elif status == "none" and self._vllm_auth_failed():
@@ -231,7 +231,7 @@ class OverlayWindow(QWidget):
             if self._ocr_error is not None:
                 links = f' <a href="doctor">{t("status.link_doctor")}</a>'
             elif self._error is None and (
-                    status == "none" or (status in ("fallback", "tencent") and self._vllm_auth_failed())):
+                    status == "none" or (status in ("fallback", "microsoft") and self._vllm_auth_failed())):
                 links = f' <a href="settings">{t("status.link_settings")}</a>'
         self._status.setText(f"<span style='color:{color}'>●</span> {text} · {view}{links}")
 

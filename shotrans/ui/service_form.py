@@ -16,6 +16,8 @@ from .. import i18n, services
 from ..config import ServiceConfig, api_key_ok
 from ..i18n import N_, t
 
+SIGNUP_KEYS = {"ollama": N_("service.download_ollama")}
+
 RED = "border:1px solid #ef4444"
 POLL_MS = 30
 CONN_KEYS = {"auth": N_("service.conn.auth"), "unreachable": N_("service.conn.unreachable"),
@@ -142,7 +144,6 @@ class ServiceForm(QWidget):
         self.model.lineEdit().setPlaceholderText(t("service.model_placeholder"))
         self.btn_models.setText(t("service.fetch_models"))
         self.thinking.setText(t("service.thinking"))
-        self.signup.setText(t("service.signup"))
         self.btn_test.setText(t("service.test"))
         self._update_preset_info()
 
@@ -214,6 +215,7 @@ class ServiceForm(QWidget):
 
     def _update_preset_info(self) -> None:
         p = services.preset(self.preset_id())
+        self.signup.setText(t(SIGNUP_KEYS.get(p.id, N_("service.signup"))))  # 本机 Ollama 是下载页，不是注册页
         self.signup.setVisible(bool(p.signup_url))
         self.cost.setText(p.cost(i18n.language()))
         self.cost.setVisible(bool(p.cost_zh))

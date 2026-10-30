@@ -5,7 +5,7 @@ import shiboken6
 from PySide6.QtCore import QAbstractNativeEventFilter
 from PySide6.QtGui import QGuiApplication
 
-from tests.fakes import FakeTransmart, FakeVllm
+from tests.fakes import FakeEdge, FakeVllm
 
 WM_GETOBJECT = 0x003D
 
@@ -44,21 +44,21 @@ def _private_instance_name(monkeypatch):
 
 
 @pytest.fixture(autouse=True)
-def _no_real_transmart(monkeypatch):
-    """单元测试绝不连真的腾讯接口：默认地址换成本机一个没人监听的端口（连不上，立刻失败）。
-    要测成功路径的测试自己起 FakeTransmart，并把 url 传给客户端或再 monkeypatch 这个地址。"""
-    from shotrans.translate import tencent
+def _no_real_edge(monkeypatch):
+    """单元测试绝不连真的微软翻译接口：默认地址换成本机一个没人监听的端口（连不上，立刻失败）。
+    要测成功路径的测试自己起 FakeEdge，并把 url 传给客户端或再 monkeypatch 这个地址。"""
+    from shotrans.translate import microsoft
     from tests.fakes import closed_port_url
 
-    monkeypatch.setattr(tencent, "TRANSMART_URL", closed_port_url().replace("/v1", "/api/imt"))
+    monkeypatch.setattr(microsoft, "EDGE_URL", closed_port_url().replace("/v1", "/translate/translatetext"))
 
 
 @pytest.fixture
-def make_transmart():
+def make_edge():
     servers = []
 
     def _make(handler):
-        s = FakeTransmart(handler)
+        s = FakeEdge(handler)
         servers.append(s)
         return s
 

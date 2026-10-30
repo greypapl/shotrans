@@ -1,16 +1,17 @@
-"""翻译路由：vLLM → 备用（用户自填的 OpenAI 兼容接口）→ 腾讯交互翻译，三层都可不配置（传 None 就跳过）；
+"""翻译路由：vLLM → 备用（用户自填的 OpenAI 兼容接口）→ 免费翻译层（免 key 的机器翻译，现在是微软翻译），
+三层都可不配置（传 None 就跳过）；
 vLLM 失败后 60 秒内跳过 vLLM（熔断只针对 vLLM）。
 
 - 翻到一半断了：已完成的段落保留，剩下的交给下一个服务。
 - vLLM 没按编号格式输出：剩下的段落改成一段一个请求。
 - 占位符丢了：同一服务单独重翻这一段；还丢就显示原文。
-  腾讯例外：还丢就再用不带占位符的原文翻一次，照常显示译文，注明「引用/术语可能未保持原样」，不进缓存。
+  免费翻译层例外：还丢就再用不带占位符的原文翻一次，照常显示译文，注明「引用/术语可能未保持原样」，不进缓存。
 - 都失败（或没有可用服务）：显示原文，注明「翻译服务不可用」。
 
 大模型层（vLLM、备用）分块并发：段落按阅读顺序切块（每块约 chunk_chars 字、至多 chunk_max_segments 段），
 同一服务最多 max_concurrency 块同时在途（第一块先走一步，见 head_start）。各块在工作线程里跑，结果经队列交回调用 translate 的线程，
 on_result 始终只在这一个线程里串行调用。某块整体失败：不再发新块，等在途的块都结束后，所有没译完的段统一交给下一层。
-腾讯一次批量返回，不分块。"""
+免费翻译层一次批量返回，不分块（它自己按接口上限分批）。"""
 from __future__ import annotations
 
 import logging
@@ -64,12 +65,12 @@ def _merge_maps(items) -> list[tuple[str, str]]:
 
 class Router:
     def __init__(self, vllm, fallback, glossary: Glossary, breaker_seconds: float = 60.0,
-                 clock: Callable[[], float] = time.monotonic, tencent=None,
+                 clock: Callable[[], float] = time.monotonic, free=None,
                  chunk_chars: int = 600, chunk_max_segments: int = 8, max_concurrency: int = 4,
                  head_start: float = 0.5):
         self.vllm = vllm          # 可为 None：没填 key，不启用 vLLM
         self.fallback = fallback  # 可为 None：不启用第二层
-        self.tencent = tencent    # 可为 None：不启用第三层
+        self.free = free          # 可为 None：不启用第三层（免费翻译层）
         self.glossary = glossary
         # 分块并发（只用于大模型层）；max_concurrency = 1 就是在调用者线程里一块接一块地顺序翻
         self.chunk_chars = max(1, chunk_chars)
@@ -131,7 +132,7 @@ class Router:
         return not (svc is self.vllm and self.vllm_down())
 
     def _chain(self) -> list:
-        return [s for s in (self.vllm, self.fallback, self.tencent) if self._usable(s)]
+        return [s for s in (self.vllm, self.fallback, self.free) if self._usable(s)]
 
     # ---------- 主流程 ----------
     def _make_item(self, s: Segment, direction: str) -> _Item:
@@ -195,7 +196,7 @@ class Router:
         return (box[0] if box else None), None
 
     def _unprotected(self, svc, it: _Item, direction: str, cancel) -> SegmentResult | None:
-        """不带占位符（引用、保持原样的词都不保护）直接翻原文；只给腾讯用。失败返回 None。不进缓存。"""
+        """不带占位符（引用、保持原样的词都不保护）直接翻原文；只给免费翻译层用。失败返回 None。不进缓存。"""
         box: list[str] = []
         try:
             svc.translate_stream([Job(it.seg.idx, it.seg.text)], direction, it.maps,
@@ -239,7 +240,7 @@ class Router:
                 continue
             if cancel.is_set():
                 break
-            if svc is self.tencent:
+            if svc is self.free:
                 res = self._unprotected(svc, it, direction, cancel)
                 if cancel.is_set():
                     break
@@ -306,7 +307,7 @@ class Router:
     def _run_layer(self, svc, items: dict[int, _Item], direction: str,
                    on_result: Callable[[SegmentResult], None], cancel: threading.Event) -> None:
         """用一层服务翻 items；交付了的段从 items 里删掉，剩下的留给下一层。"""
-        chunks = [dict(items)] if svc is self.tencent else self._split(items)
+        chunks = [dict(items)] if svc is self.free else self._split(items)
         n_workers = min(self.max_concurrency, len(chunks))
         if n_workers <= 1:
             # 顺序：就在调用者线程里一块接一块（只有一块时与分块前完全相同）
@@ -378,8 +379,8 @@ class Router:
 
     # ---------- 单段重翻 ----------
     def retranslate_one(self, segment: Segment, direction: str, current_service: str) -> SegmentResult | None:
-        """换一个服务重翻：按 vllm → 备用 → 腾讯 的顺序取第一个「不是当前服务、配置了、不在熔断期」的；没有就返回 None。"""
-        svc = next((s for s in (self.vllm, self.fallback, self.tencent)
+        """换一个服务重翻：按 vllm → 备用 → 免费翻译层 的顺序取第一个「不是当前服务、配置了、不在熔断期」的；没有就返回 None。"""
+        svc = next((s for s in (self.vllm, self.fallback, self.free)
                     if self._usable(s) and s.name != current_service), None)
         if svc is None:
             return None
@@ -392,7 +393,7 @@ class Router:
         try:
             final, spans = restore_spans(out, it.prot.slots, it.prot.pills)
         except MissingPlaceholder:
-            # 腾讯：改用不带占位符的原文翻（同 translate 的规则）；别的服务照旧放弃
-            return self._unprotected(svc, it, direction, None) if svc is self.tencent else None
+            # 免费翻译层：改用不带占位符的原文翻（同 translate 的规则）；别的服务照旧放弃
+            return self._unprotected(svc, it, direction, None) if svc is self.free else None
         self._cache_put((segment.text, direction, svc.name, it.sig), (final, spans))
         return SegmentResult(segment.idx, final, svc.name, pill_spans=spans)

@@ -67,7 +67,7 @@ def test_new_format_all_values(tmp_path):
     assert (c.connect_timeout, c.first_token_timeout, c.stall_timeout, c.breaker_seconds) == (1.5, 4.5, 12.5, 30.5)
     assert (c.backup_connect_timeout, c.backup_first_token_timeout, c.backup_stall_timeout) == (2.5, 8.5, 15.5)
     assert c.history_limit == 50
-    assert (c.tencent_enabled, c.tencent_connect_timeout) == (False, 7.5)
+    assert (c.free_enabled, c.free_connect_timeout) == (False, 7.5)
 
 
 def test_defaults_when_empty(tmp_path):
@@ -80,7 +80,7 @@ def test_defaults_when_empty(tmp_path):
     assert (c.backup_connect_timeout, c.backup_first_token_timeout, c.backup_stall_timeout) == (6.0, 10.0, 20.0)
     assert c.hotkey == "Ctrl+Alt+Q" and c.domain_hint == "" and c.history_limit == 200
     assert (c.chunk_chars, c.chunk_max_segments, c.max_concurrency) == (600, 8, 4)
-    assert (c.tencent_enabled, c.tencent_connect_timeout) == (False, 6.0)  # 新格式文件没写 = 关
+    assert (c.free_enabled, c.free_connect_timeout) == (False, 6.0)  # 新格式文件没写 = 关
 
 
 def test_service_defaults():
@@ -195,8 +195,8 @@ def test_timeouts_must_be_positive(tmp_path, key):
     assert f"[timeouts] {key}" in str(ei.value) and "大于 0" in str(ei.value)
 
 
-def test_tencent_connect_must_be_positive(tmp_path):
-    with pytest.raises(ConfigError, match=r"\[tencent\] connect"):
+def test_free_connect_must_be_positive(tmp_path):
+    with pytest.raises(ConfigError, match=r"\[free\] connect"):
         load_config(_write(tmp_path, "[tencent]\nconnect = -1\n"))
 
 

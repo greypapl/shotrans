@@ -37,7 +37,7 @@ def test_migrate_converts_and_encrypts(tmp_path):
                                       model="", thinking_off=True, thinking_style="chat_template_kwargs")
     assert c.backup == ServiceConfig(preset="custom", base_url="https://api.example.com/v1", api_key="sk-fb-8888",
                                      model="m1", thinking_off=False)
-    assert c.hotkey == "Ctrl+Alt+W" and c.tencent_enabled is False and c.autostart is True
+    assert c.hotkey == "Ctrl+Alt+W" and c.free_enabled is False and c.autostart is True
     assert (c.connect_timeout, c.first_token_timeout, c.stall_timeout) == (2.0, 3.0, 10.0)  # 旧超时原样写进新文件
     text = (home / "config.toml").read_text(encoding="utf-8")
     assert "sk-legacy-7777" not in text and "sk-fb-8888" not in text

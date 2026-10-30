@@ -29,10 +29,10 @@ def _box_changed_outside_marker(img, src):
 
 # ---------- SegmentResult.is_translation ----------
 @pytest.mark.parametrize("service,note,expected", [
-    ("tencent", None, True),
-    ("tencent", UNPROT, True),
+    ("microsoft", None, True),
+    ("microsoft", UNPROT, True),
     ("vllm", UNPROT, True),
-    ("tencent", "占位符丢失，显示原文", False),
+    ("microsoft", "占位符丢失，显示原文", False),
     ("none", "翻译服务不可用", False),
     ("none", None, False),
     ("none", UNPROT, False),
@@ -44,13 +44,13 @@ def test_is_translation(service, note, expected):
 # ---------- Session ----------
 def test_unprotected_result_is_drawn():
     s = _session()
-    s.apply(s.generation, SegmentResult(1, "你好世界", "tencent", UNPROT))
+    s.apply(s.generation, SegmentResult(1, "你好世界", "microsoft", UNPROT))
     assert _box_changed_outside_marker(s.display_image(), s.image)
 
 
 def test_unprotected_result_gets_marker():
     s = _session()
-    s.apply(s.generation, SegmentResult(1, "你好世界", "tencent", UNPROT))
+    s.apply(s.generation, SegmentResult(1, "你好世界", "microsoft", UNPROT))
     img = s.display_image()
     assert img.getpixel((159, 10)) == AMBER
     assert img.getpixel((154, 10)) == AMBER
@@ -58,19 +58,19 @@ def test_unprotected_result_gets_marker():
 
 def test_lost_note_still_not_drawn():
     s = _session()
-    s.apply(s.generation, SegmentResult(1, "Hello world", "tencent", "占位符丢失，显示原文"))
+    s.apply(s.generation, SegmentResult(1, "Hello world", "microsoft", "占位符丢失，显示原文"))
     assert not _box_changed_outside_marker(s.display_image(), s.image)
 
 
 def test_unprotected_hover_in_translation_view():
     s = _session()
-    s.apply(s.generation, SegmentResult(1, "你好世界", "tencent", UNPROT))
+    s.apply(s.generation, SegmentResult(1, "你好世界", "microsoft", UNPROT))
     assert s.hover_text(s.segments[0]) == f"Hello world\n（{UNPROT}）"
 
 
 def test_unprotected_hover_in_original_view():
     s = _session()
-    s.apply(s.generation, SegmentResult(1, "你好世界", "tencent", UNPROT))
+    s.apply(s.generation, SegmentResult(1, "你好世界", "microsoft", UNPROT))
     s.toggle_view()
     assert s.hover_text(s.segments[0]) == f"你好世界\n（{UNPROT}）"
 
@@ -78,13 +78,13 @@ def test_unprotected_hover_in_original_view():
 def test_unprotected_hover_when_truncated_keeps_note():
     s = _session([OcrLine("Hi", Box(10, 10, 30, 12))])
     long = "很长的译文" * 100   # Task 19：译文会延伸到框外的空白，原来的 20 遍已能放下，加到 100 遍才截断
-    s.apply(s.generation, SegmentResult(1, long, "tencent", UNPROT))
+    s.apply(s.generation, SegmentResult(1, long, "microsoft", UNPROT))
     assert s.hover_text(s.segments[0]) == f"{long}\n——\nHi\n（{UNPROT}）"
 
 
 def test_unprotected_copy_gives_translation():
     s = _session()
-    s.apply(s.generation, SegmentResult(1, "你好世界", "tencent", UNPROT))
+    s.apply(s.generation, SegmentResult(1, "你好世界", "microsoft", UNPROT))
     assert s.translation_of(s.segments[0]) == "你好世界"
 
 
@@ -122,7 +122,7 @@ def tip(monkeypatch):
 
 def test_overlay_draws_unprotected_translation_with_marker(quiet_u):
     w = quiet_u
-    w.session.apply(w.session.generation, SegmentResult(1, "你好世界", "tencent", UNPROT))
+    w.session.apply(w.session.generation, SegmentResult(1, "你好世界", "microsoft", UNPROT))
     w._refresh()
     qimg = w._pixmap.toImage()
     c = qimg.pixelColor(159, 10)
@@ -133,7 +133,7 @@ def test_overlay_draws_unprotected_translation_with_marker(quiet_u):
 
 def test_overlay_hover_shows_unprotected_note(quiet_u, tip):
     w = quiet_u
-    w.session.apply(w.session.generation, SegmentResult(1, "你好世界", "tencent", UNPROT))
+    w.session.apply(w.session.generation, SegmentResult(1, "你好世界", "microsoft", UNPROT))
     w._refresh()
     w._hover_pos = QPoint(20, 28 + 15)
     w._show_hover()

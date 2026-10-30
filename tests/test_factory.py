@@ -55,13 +55,13 @@ def test_backup_client_from_config(tmp_path):
 def test_unconfigured_services_are_none(tmp_path):
     r = _router(tmp_path, "")
     assert r.vllm is None and r.fallback is None
-    assert r._chain() == []  # 新格式文件没写 [tencent] enabled = 腾讯也关
+    assert r._chain() == []  # 新格式文件没写 [tencent] enabled = 免费翻译层也关
 
 
-def test_unconfigured_services_with_tencent_on(tmp_path):
+def test_unconfigured_services_with_free_on(tmp_path):
     r = _router(tmp_path, "[tencent]\nenabled = true\n")
     assert r.vllm is None and r.fallback is None
-    assert [s.name for s in r._chain()] == ["tencent"]
+    assert [s.name for s in r._chain()] == ["microsoft"]
 
 
 def test_service_client_unknown_role():

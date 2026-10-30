@@ -1,7 +1,7 @@
 """自测：截图翻译.exe --selftest <结果文件>。构建脚本在干净环境里跑它，验证打包版能导入、能开窗、能 OCR。
 
 不建托盘、不注册快捷键、不检查单实例；数据目录用 SHOTRANS_HOME（没设就新建临时目录，绝不碰真实 %APPDATA%）。
-不联网：配置里腾讯关闭、主备服务都不填；自检窗口不跑检查项。
+不联网：配置里免费翻译关闭、主备服务都不填；自检窗口不跑检查项。
 窗口用真实平台插件（打包版只带 qwindows），设 WA_DontShowOnScreen，屏幕上看不到。"""
 from __future__ import annotations
 
@@ -58,13 +58,14 @@ MODULES = (
     "shotrans.translate",
     "shotrans.translate.base",
     "shotrans.translate.factory",
+    "shotrans.translate.microsoft",
     "shotrans.translate.router",
-    "shotrans.translate.tencent",
     "shotrans.translate.vllm",
     "shotrans.ui",
     "shotrans.ui.about_window",
     "shotrans.ui.clip_window",
     "shotrans.ui.doctor_window",
+    "shotrans.ui.free_test",
     "shotrans.ui.glossary_page",
     "shotrans.ui.history_window",
     "shotrans.ui.hotkey_edit",
@@ -85,7 +86,7 @@ class _Port:
         from .config import Config
         from .history import History
         self.home = home
-        self.config = Config(tencent_enabled=False)
+        self.config = Config(free_enabled=False)
         self.history = History(home / "history.json", self.config.history_limit)
         self.log_file = home / "logs" / "shotrans.log"
 

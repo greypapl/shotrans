@@ -121,12 +121,12 @@ def test_stage_ocr_redraws_even_identical_text(tmp_path, monkeypatch):
 
 
 class _UnprotectedRouter:
-    """第 1 段是腾讯不带占位符的译文（要画），第 2 段是占位符丢失的原文（不画）。"""
+    """第 1 段是免费翻译层不带占位符的译文（要画），第 2 段是占位符丢失的原文（不画）。"""
 
     def translate(self, segs, direction, on_result):
         from shotrans.models import SegmentResult
-        on_result(SegmentResult(segs[0].idx, "你好", "tencent", "引用/术语可能未保持原样"))
-        on_result(SegmentResult(segs[1].idx, segs[1].text, "tencent", "占位符丢失，显示原文"))
+        on_result(SegmentResult(segs[0].idx, "你好", "microsoft", "引用/术语可能未保持原样"))
+        on_result(SegmentResult(segs[1].idx, segs[1].text, "microsoft", "占位符丢失，显示原文"))
 
 
 def test_stage_full_draws_unprotected_but_not_lost(tmp_path, monkeypatch):

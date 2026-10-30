@@ -18,7 +18,7 @@ ZH = {
     "doctor.item.config": "配置文件",
     "doctor.item.primary": "主服务",
     "doctor.item.backup": "备用服务",
-    "doctor.item.tencent": "腾讯兜底",
+    "doctor.item.free": "微软免费翻译",
     "doctor.item.hotkey": "快捷键",
     "doctor.item.fonts": "字体",
     "doctor.line": "{mark} {name}：{msg}",
@@ -26,7 +26,7 @@ ZH = {
     "doctor.bad_result": "出错：检查返回了无法识别的结果 {value}",
     "doctor.cfg_missing": "配置没读到，先修好上一项",
     "doctor.config_ok": "读取成功",
-    "doctor.config_no_service": "读取成功，但没有任何可用的翻译服务：主服务、备用服务都没配置，腾讯兜底也关了。"
+    "doctor.config_no_service": "读取成功，但没有任何可用的翻译服务：主服务、备用服务都没配置，微软免费翻译也关了。"
                                 "请在设置里至少配置主服务",
     "doctor.ocr_ok": "已安装",
     "doctor.ocr_missing": "没有安装 {tag} 的 OCR 语言包（设置 → 时间和语言 → 语言和区域 → 添加对应语言，"
@@ -37,9 +37,10 @@ ZH = {
     "doctor.key_unreadable": "API key 无法解密（可能换了电脑或 Windows 用户），请在设置里重新填写",
     "doctor.service_ok": "模型 {model}，单句 {secs} 秒，译文：{text}",
     "doctor.no_key_note": "（没填 key，按无需 key 的接口试）",
-    "doctor.tencent_off": "已关闭",
-    "doctor.tencent_ok": "单句 {secs} 秒，译文：{text}",
-    "doctor.tencent_bad": "不可用（{kind}：{detail}）。这是非官方接口，可能已失效；不想用可在设置里关掉腾讯兜底",
+    "doctor.free_off": "已关闭",
+    "doctor.free_ok": "单句 {secs} 秒，译文：{text}",
+    "doctor.free_bad": "不可用（{kind}：{detail}）。这是非官方接口，可能已失效；可以改用免费的智谱 GLM-4.7-Flash"
+                       "（设置 → 翻译服务，预设选「智谱」，用手机号注册拿 key）",
     "doctor.hotkey_free": "{hotkey} 可用",
     "doctor.hotkey_own": "{hotkey} 正由截图翻译使用",
     "doctor.hotkey_taken": "{hotkey} 被占用（如果截图翻译正在运行，这一项显示被占用是正常的）",
@@ -73,7 +74,7 @@ EN = {
     "doctor.item.config": "Config file",
     "doctor.item.primary": "Primary service",
     "doctor.item.backup": "Backup service",
-    "doctor.item.tencent": "Tencent fallback",
+    "doctor.item.free": "Microsoft free translation",
     "doctor.item.hotkey": "Hotkey",
     "doctor.item.fonts": "Fonts",
     "doctor.line": "{mark} {name}: {msg}",
@@ -82,7 +83,7 @@ EN = {
     "doctor.cfg_missing": "Config not loaded; fix the item above first",
     "doctor.config_ok": "Loaded",
     "doctor.config_no_service": "Loaded, but no translation service is usable: neither the primary nor the backup "
-                                "service is set up and the Tencent fallback is off. Set up at least the primary "
+                                "service is set up and Microsoft free translation is off. Set up at least the primary "
                                 "service in Settings",
     "doctor.ocr_ok": "Installed",
     "doctor.ocr_missing": "The OCR language pack {tag} is not installed (Settings → Time & language → Language & "
@@ -96,10 +97,11 @@ EN = {
                              "Settings",
     "doctor.service_ok": "Model {model}, one sentence in {secs} s: {text}",
     "doctor.no_key_note": " (no key; tried as a key-less endpoint)",
-    "doctor.tencent_off": "Off",
-    "doctor.tencent_ok": "One sentence in {secs} s: {text}",
-    "doctor.tencent_bad": "Unavailable ({kind}: {detail}). This unofficial endpoint may have stopped working; you "
-                          "can turn the Tencent fallback off in Settings",
+    "doctor.free_off": "Off",
+    "doctor.free_ok": "One sentence in {secs} s: {text}",
+    "doctor.free_bad": "Unavailable ({kind}: {detail}). This unofficial endpoint may have stopped working; you can "
+                       "switch to Zhipu GLM-4.7-Flash, which is free (Settings → Translation service, preset "
+                       "\"Zhipu\"; sign up with a phone number to get a key)",
     "doctor.hotkey_free": "{hotkey} is free",
     "doctor.hotkey_own": "{hotkey} is in use by ShotTrans",
     "doctor.hotkey_taken": "{hotkey} is taken (normal if ShotTrans is running)",

@@ -9,7 +9,7 @@ replay.png，并按段打印字号、是否截断和框。不需要识别，也�
 
 行内代码胶囊（Task 22）：版本 3 的快照存了胶囊在译文里的位置（pill_spans）；重新分段后按文字和框把胶囊编号对到新段上
 （remap_pill_spans，对不上的那处照旧当文字画），再交给 render（render 还会核对文字）；版本 1、2 没存，按 guess_pill_spans 重算——胶囊文字在译文里恰好出现一次才算
-（带 note 的结果不猜：腾讯不带占位符重翻时胶囊没受保护）。"""
+（带 note 的结果不猜：免费翻译层不带占位符重翻时胶囊没受保护）。"""
 from __future__ import annotations
 
 import json
@@ -221,7 +221,7 @@ def replay_report(path) -> ReplayReport:
                 translations[seg.idx] = r.text
                 if sid in has_spans:
                     spans[seg.idx] = remap_pill_spans(r.pill_spans, saved_by_idx[sid].get("pills", []), seg.pills)
-                elif r.note is None:   # 腾讯不带占位符重翻的（NOTE_UNPROTECTED）胶囊没保护，不猜
+                elif r.note is None:   # 免费翻译层不带占位符重翻的（NOTE_UNPROTECTED）胶囊没保护，不猜
                     spans[seg.idx] = guess_pill_spans(r.text, seg.pills)
             if r.note:
                 marked.add(seg.idx)

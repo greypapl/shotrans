@@ -31,7 +31,7 @@ def _clock(*values):
 
 # ---------- 预设 ----------
 def test_preset_ids_in_order():
-    assert [p.id for p in PRESETS] == ["deepseek", "siliconflow", "bailian", "openai", "custom"]
+    assert [p.id for p in PRESETS] == ["deepseek", "zhipu", "siliconflow", "bailian", "openai", "ollama", "custom"]
 
 
 def test_deepseek_preset_turns_thinking_off():
@@ -83,8 +83,10 @@ def test_bailian_and_others_signup_urls():
 
 
 def test_public_preset_costs_defer_to_official_pricing():
-    # 价格只写官网能看到的「约」数，且一律注明以官网为准（中英两份都要）
-    for p in PRESETS[:-1]:
+    # 价格只写官网能看到的「约」数，且一律注明以官网为准（中英两份都要）。本机 Ollama 没有价格，不算
+    for p in PRESETS:
+        if p.id in ("custom", "ollama"):
+            continue
         assert "以官网" in p.cost_zh, p.id
         assert "official" in p.cost_en.lower(), p.id
 

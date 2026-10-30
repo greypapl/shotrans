@@ -27,7 +27,19 @@ ZH = {
     "wizard.env.recheck": "重新检测",
     "wizard.env.continue_anyway": "仍然继续（没有 OCR 语言包时翻译会失败）",
     "wizard.service.title": "翻译服务",
-    "wizard.service.note": "选一家服务、填上你自己的 API key，点「测试连接」通过后才能进入下一步。",
+    "wizard.service.mode_free": "免费：微软翻译（不想注册就选这个，装好就能用）",
+    "wizard.service.free_desc": "识别出的文字会发给微软翻译。这是微软 Edge 浏览器网页翻译用的接口，不是正式开放的服务，"
+                                "哪天可能用不了（那时可以改用上面的大模型服务，智谱有免费模型）。普通机器翻译，术语表照样生效。"
+                                "点「测试连接」通过后才能进入下一步。",
+    "wizard.service.mode_llm": "大模型服务（推荐：翻得更好、懂上下文；要 API key，智谱免费）",
+    "wizard.service.note": "选一家服务、填上你自己的 API key，点「测试连接」通过后才能进入下一步。"
+                           "智谱 GLM-4.7-Flash 是免费模型，用手机号注册就能拿 key。"
+                           "有独立显卡、不想让文字出电脑，可以选「Ollama（本机）」在自己电脑上跑模型。",
+    "wizard.service.free_backup": "主服务连不上时，用微软免费翻译兜底（这时文字会发给微软）",
+    "wizard.free.test": "测试连接",
+    "wizard.free.testing": "测试中…",
+    "wizard.free.ok": "✅ 能用（{msg}）",
+    "wizard.free.bad": "❌ {msg}",
     "wizard.finish.title": "完成",
     "wizard.finish.hotkey": "快捷键",
     "wizard.finish.autostart": "开机自启",
@@ -66,7 +78,24 @@ EN = {
     "wizard.env.recheck": "Check again",
     "wizard.env.continue_anyway": "Continue anyway (translation will fail without an OCR language pack)",
     "wizard.service.title": "Translation service",
-    "wizard.service.note": "Pick a service, paste your own API key and pass Test connection to continue.",
+    "wizard.service.mode_free": "Free: Microsoft Translator (if you don't want to sign up; works right away)",
+    "wizard.service.free_desc": "Recognized text is sent to Microsoft Translator. This is the endpoint Microsoft Edge "
+                                "uses to translate web pages, not an official public service, so it may stop working "
+                                "some day (you can then switch to the AI model service above; Zhipu has a free "
+                                "model). Plain machine translation; your glossary still applies. Pass Test "
+                                "connection to continue.",
+    "wizard.service.mode_llm": "AI model service (recommended: better, context-aware translations; needs an "
+                               "API key, Zhipu is free)",
+    "wizard.service.note": "Pick a service, paste your own API key and pass Test connection to continue. "
+                           "Zhipu GLM-4.7-Flash is a free model; sign up with a phone number to get a key. With a "
+                           "dedicated GPU, or if text must not leave your computer, choose \"Ollama (local)\" "
+                           "to run a model on your own machine.",
+    "wizard.service.free_backup": "If the primary service can't be reached, fall back to Microsoft's free "
+                                  "translation (text is then sent to Microsoft)",
+    "wizard.free.test": "Test connection",
+    "wizard.free.testing": "Testing…",
+    "wizard.free.ok": "✅ Works ({msg})",
+    "wizard.free.bad": "❌ {msg}",
     "wizard.finish.title": "All set",
     "wizard.finish.hotkey": "Hotkey",
     "wizard.finish.autostart": "Start with Windows",

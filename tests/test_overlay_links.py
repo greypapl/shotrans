@@ -53,7 +53,7 @@ def test_unavailable_has_settings_link(make):
 def test_key_invalid_has_settings_link(make):
     w = make()
     w._router.down, w._router.last_kind = True, "auth"
-    w.session.apply(w.session.generation, SegmentResult(1, "好", "tencent"))
+    w.session.apply(w.session.generation, SegmentResult(1, "好", "microsoft"))
     w._refresh()
     assert '<a href="settings">' in w._status.text()
 

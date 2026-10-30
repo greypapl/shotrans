@@ -144,11 +144,11 @@ class Session:
 
     def service_status(self) -> str:
         services = {r.service for r in self.results.values()}
-        # 取「最差」的那层：none > tencent > fallback > vllm
+        # 取「最差」的那层：none > microsoft（免费翻译层）> fallback > vllm
         if "none" in services:
             return "none"
-        if "tencent" in services:
-            return "tencent"
+        if "microsoft" in services:
+            return "microsoft"
         if "fallback" in services:
             return "fallback"
         if "vllm" in services:

@@ -15,8 +15,8 @@ def mk(v_script=None, fb_script=None, tc_script=None, **kw):
     kw.setdefault("head_start", 0.0)
     v = FakeService("vllm", v_script) if v_script else None
     m = FakeService("fallback", fb_script) if fb_script else None
-    t = FakeService("tencent", tc_script) if tc_script else None
-    return Router(v, m, Glossary(), breaker_seconds=60, clock=Clock(), tencent=t, **kw), v, m, t
+    t = FakeService("microsoft", tc_script) if tc_script else None
+    return Router(v, m, Glossary(), breaker_seconds=60, clock=Clock(), free=t, **kw), v, m, t
 
 
 def segs(n, width=10, start=1):
@@ -201,7 +201,7 @@ def test_head_start_released_when_first_chunk_fails():
     t0 = time.monotonic()
     res, _ = run(r, segs(3))
     assert stamps[3] - t0 < 0.4
-    assert {i: x.service for i, x in res.items()} == {1: "tencent", 2: "fallback", 3: "fallback"}
+    assert {i: x.service for i, x in res.items()} == {1: "microsoft", 2: "fallback", 3: "fallback"}
 
 
 # ---------- 失败与切换 ----------
@@ -335,7 +335,7 @@ def test_per_segment_connectivity_failure_stops_new_chunks():
 
 
 def test_fallback_format_error_does_not_stop_other_chunks():
-    """备用某块 format 错：只这一块交给腾讯，其余块照样发给备用。"""
+    """备用某块 format 错：只这一块交给免费翻译层，其余块照样发给备用。"""
     def fb_script(svc, jobs, on):
         if jobs[0].idx == 1:
             raise TranslateError("format")
@@ -346,7 +346,7 @@ def test_fallback_format_error_does_not_stop_other_chunks():
     r, _, m, t = mk(None, fb_script, echo("T"), chunk_chars=10, max_concurrency=2)
     res, _ = run(r, segs(3))
     assert sorted(job_sets(m)) == [[1], [2], [3]]
-    assert {i: x.service for i, x in res.items()} == {1: "tencent", 2: "fallback", 3: "fallback"}
+    assert {i: x.service for i, x in res.items()} == {1: "microsoft", 2: "fallback", 3: "fallback"}
 
 
 def test_fallback_layer_is_chunked():
@@ -355,11 +355,11 @@ def test_fallback_layer_is_chunked():
     assert sorted(job_sets(m)) == [[1], [2], [3]]
 
 
-def test_tencent_layer_not_chunked():
+def test_free_layer_not_chunked():
     r, *_, t = mk(None, None, echo("T"), chunk_chars=10, chunk_max_segments=1, max_concurrency=4)
     res, _ = run(r, segs(5))
     assert job_sets(t) == [[1, 2, 3, 4, 5]]
-    assert {x.service for x in res.values()} == {"tencent"}
+    assert {x.service for x in res.values()} == {"microsoft"}
 
 
 def test_worker_crash_is_raised_on_caller_thread():

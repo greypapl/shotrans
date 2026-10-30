@@ -1,4 +1,4 @@
-"""腾讯首图慢：连接保活、断开重发一次、预热（吞掉异常、不和真请求赛跑）。全部用本机假服务器。"""
+"""微软翻译的连接：保活、走系统代理、断开重发一次、预热（吞掉异常、不和真请求赛跑）。全部用本机假服务器。"""
 import logging
 import pathlib
 import re
@@ -9,12 +9,12 @@ import httpx
 import pytest
 
 from shotrans.translate.base import Job, TranslateError
-from shotrans.translate.tencent import TencentClient
-from tests.fakes import closed_port_url, transmart_map, transmart_reply
+from shotrans.translate.microsoft import MicrosoftClient
+from tests.fakes import closed_port_url, edge_map, edge_reply
 
 
 def _client(srv, **kw):
-    return TencentClient(timeout_connect=0.5, timeout_read=kw.pop("timeout_read", 2.0), url=srv.url, **kw)
+    return MicrosoftClient(timeout_connect=0.5, timeout_read=kw.pop("timeout_read", 2.0), url=srv.url, **kw)
 
 
 def _collect(client, jobs):
@@ -36,7 +36,7 @@ def test_client_keepalive_120s(monkeypatch):
     seen = []
     real = httpx.Client
     monkeypatch.setattr(httpx, "Client", lambda *a, **k: (seen.append(k), real(*a, **k))[1])
-    TencentClient(url="http://127.0.0.1:1/api/imt")._http()
+    MicrosoftClient(url="http://127.0.0.1:1/translate/translatetext")._http()
     assert seen[0]["limits"].keepalive_expiry == 120.0
 
 
@@ -45,7 +45,7 @@ def test_client_has_no_custom_transport(monkeypatch):
     seen = []
     real = httpx.Client
     monkeypatch.setattr(httpx, "Client", lambda *a, **k: (seen.append(k), real(*a, **k))[1])
-    TencentClient(url="http://127.0.0.1:1/api/imt")._http()
+    MicrosoftClient(url="http://127.0.0.1:1/translate/translatetext")._http()
     assert "transport" not in seen[0]
 
 
@@ -54,25 +54,25 @@ def test_client_mounts_env_proxies(monkeypatch):
         monkeypatch.delenv(k, raising=False)
     monkeypatch.setenv("HTTPS_PROXY", "http://127.0.0.1:9")
     monkeypatch.setenv("HTTP_PROXY", "http://127.0.0.1:9")
-    c = TencentClient(url="https://transmart.qq.com/api/imt")._http()
+    c = MicrosoftClient(url="https://edge.microsoft.com/translate/translatetext")._http()
     assert len(c._mounts) >= 2  # https:// 和 http:// 各挂一个代理 transport
 
 
-def test_request_goes_through_env_proxy(monkeypatch, make_transmart):
+def test_request_goes_through_env_proxy(monkeypatch, make_edge):
     """真的发一次：目标是个解析不了的域名，只有经本机假代理才收得到。"""
     for k in ("ALL_PROXY", "NO_PROXY", "all_proxy", "no_proxy", "https_proxy", "http_proxy"):
         monkeypatch.delenv(k, raising=False)
-    proxy = make_transmart(transmart_map(lambda t: "好"))
+    proxy = make_edge(edge_map(lambda t: "好"))
     monkeypatch.setenv("HTTP_PROXY", proxy.base)
     monkeypatch.setenv("HTTPS_PROXY", proxy.base)
-    c = TencentClient(timeout_connect=0.5, timeout_read=2.0, url="http://transmart.invalid/api/imt")
+    c = MicrosoftClient(timeout_connect=0.5, timeout_read=2.0, url="http://edge-translate.invalid/translate/translatetext")
     assert _collect(c, [Job(1, "a")]) == [(1, "好")]
-    assert proxy.requests[0]["path"] == "http://transmart.invalid/api/imt"  # 代理收到的是绝对地址
+    assert proxy.requests[0]["path"] == "http://edge-translate.invalid/translate/translatetext"  # 代理收到的是绝对地址
 
 
 # ---------- TLS 证书校验失败 ----------
 def test_tls_verification_failure_is_connect_error(monkeypatch):
-    c = TencentClient(url="https://transmart.qq.com/api/imt")
+    c = MicrosoftClient(url="https://edge.microsoft.com/translate/translatetext")
 
     def boom(*a, **k):
         raise httpx.ConnectError("[SSL: CERTIFICATE_VERIFY_FAILED] certificate has expired")
@@ -92,7 +92,7 @@ def test_nothing_disables_tls_verification():
 
 
 # ---------- 旧连接被服务端断开：重发一次 ----------
-def test_server_disconnect_without_response_is_retried_once(make_transmart):
+def test_server_disconnect_without_response_is_retried_once(make_edge):
     n = {"posts": 0}
 
     def handler(h, payload):
@@ -100,18 +100,18 @@ def test_server_disconnect_without_response_is_retried_once(make_transmart):
         if n["posts"] == 1:
             h.close_connection = True  # 一个字节都不回就断开：客户端见到 RemoteProtocolError
             return
-        transmart_reply(h, ["好"])
+        edge_reply(h, ["好"])
 
-    srv = make_transmart(handler)
+    srv = make_edge(handler)
     assert _collect(_client(srv), [Job(1, "a")]) == [(1, "好")]
     assert n["posts"] == 2
 
 
-def test_server_disconnect_twice_is_connect_error_no_loop(make_transmart):
+def test_server_disconnect_twice_is_connect_error_no_loop(make_edge):
     def handler(h, payload):
         h.close_connection = True
 
-    srv = make_transmart(handler)
+    srv = make_edge(handler)
     with pytest.raises(TranslateError) as ei:
         _collect(_client(srv), [Job(1, "a")])
     assert ei.value.kind == "connect"
@@ -119,22 +119,22 @@ def test_server_disconnect_twice_is_connect_error_no_loop(make_transmart):
 
 
 # ---------- 预热 ----------
-def test_warm_sends_head_to_site_root(make_transmart):
-    srv = make_transmart(transmart_map(lambda t: "好"))
+def test_warm_sends_head_to_site_root(make_edge):
+    srv = make_edge(edge_map(lambda t: "好"))
     _client(srv).warm()
     assert [h["path"] for h in srv.heads] == ["/"]
     assert srv.requests == []  # 不是翻译请求
 
 
 def test_warm_swallows_connect_error(caplog):
-    c = TencentClient(timeout_connect=0.5, timeout_read=0.5, url=closed_port_url().replace("/v1", "/api/imt"))
-    with caplog.at_level(logging.DEBUG, logger="shotrans.translate.tencent"):
+    c = MicrosoftClient(timeout_connect=0.5, timeout_read=0.5, url=closed_port_url().replace("/v1", "/translate/translatetext"))
+    with caplog.at_level(logging.DEBUG, logger="shotrans.translate.microsoft"):
         assert c.warm() is None
     assert any("预热失败" in r.getMessage() and r.levelno == logging.DEBUG for r in caplog.records)
 
 
-def test_warm_swallows_any_exception(monkeypatch, make_transmart):
-    srv = make_transmart(transmart_map(lambda t: "好"))
+def test_warm_swallows_any_exception(monkeypatch, make_edge):
+    srv = make_edge(edge_map(lambda t: "好"))
     c = _client(srv)
 
     def boom():
@@ -145,8 +145,8 @@ def test_warm_swallows_any_exception(monkeypatch, make_transmart):
     assert c._warming is False  # 标志复位，后面的真请求不会一直等
 
 
-def test_warm_async_returns_immediately_on_daemon_thread(make_transmart):
-    srv = make_transmart(transmart_map(lambda t: "好"))
+def test_warm_async_returns_immediately_on_daemon_thread(make_edge):
+    srv = make_edge(edge_map(lambda t: "好"))
     srv.head_delay = 1.0
     c = _client(srv)
     t0 = time.monotonic()
@@ -157,8 +157,8 @@ def test_warm_async_returns_immediately_on_daemon_thread(make_transmart):
     assert len(srv.heads) == 1
 
 
-def test_real_request_waits_for_warm_in_progress(make_transmart):
-    srv = make_transmart(transmart_map(lambda t: "好"))
+def test_real_request_waits_for_warm_in_progress(make_edge):
+    srv = make_edge(edge_map(lambda t: "好"))
     srv.head_delay = 0.5
     c = _client(srv)
     c.warm_async()
@@ -167,12 +167,12 @@ def test_real_request_waits_for_warm_in_progress(make_transmart):
     assert srv.requests[0]["at"] >= srv.heads[0]["end"]  # 真请求等预热结束才发
 
 
-def test_warm_skipped_while_real_request_in_flight(make_transmart):
+def test_warm_skipped_while_real_request_in_flight(make_edge):
     def slow(h, payload):
         time.sleep(0.5)
-        transmart_reply(h, ["好"])
+        edge_reply(h, ["好"])
 
-    srv = make_transmart(slow)
+    srv = make_edge(slow)
     c = _client(srv)
     th = threading.Thread(target=_collect, args=(c, [Job(1, "a")]), daemon=True)
     th.start()
@@ -184,8 +184,8 @@ def test_warm_skipped_while_real_request_in_flight(make_transmart):
     assert srv.heads == []
 
 
-def test_second_warm_skipped_while_first_in_progress(make_transmart):
-    srv = make_transmart(transmart_map(lambda t: "好"))
+def test_second_warm_skipped_while_first_in_progress(make_edge):
+    srv = make_edge(edge_map(lambda t: "好"))
     srv.head_delay = 0.5
     c = _client(srv)
     th = c.warm_async()
@@ -213,24 +213,24 @@ def _flaky_post(c, exc, fail_times):
     return n
 
 
-def test_read_error_on_reused_connection_retried_once(make_transmart):
-    srv = make_transmart(transmart_map(lambda t: "好"))
+def test_read_error_on_reused_connection_retried_once(make_edge):
+    srv = make_edge(edge_map(lambda t: "好"))
     c = _client(srv)
     n = _flaky_post(c, httpx.ReadError("reset"), 1)
     assert _collect(c, [Job(1, "a")]) == [(1, "好")]
     assert n["n"] == 2
 
 
-def test_write_error_on_reused_connection_retried_once(make_transmart):
-    srv = make_transmart(transmart_map(lambda t: "好"))
+def test_write_error_on_reused_connection_retried_once(make_edge):
+    srv = make_edge(edge_map(lambda t: "好"))
     c = _client(srv)
     n = _flaky_post(c, httpx.WriteError("broken pipe"), 1)
     assert _collect(c, [Job(1, "a")]) == [(1, "好")]
     assert n["n"] == 2
 
 
-def test_read_error_twice_gives_connect_error(make_transmart):
-    srv = make_transmart(transmart_map(lambda t: "好"))
+def test_read_error_twice_gives_connect_error(make_edge):
+    srv = make_edge(edge_map(lambda t: "好"))
     c = _client(srv)
     n = _flaky_post(c, httpx.ReadError("reset"), 5)
     with pytest.raises(TranslateError) as ei:
@@ -239,8 +239,8 @@ def test_read_error_twice_gives_connect_error(make_transmart):
     assert n["n"] == 2
 
 
-def test_read_timeout_not_retried(make_transmart):
-    srv = make_transmart(transmart_map(lambda t: "好"))
+def test_read_timeout_not_retried(make_edge):
+    srv = make_edge(edge_map(lambda t: "好"))
     c = _client(srv)
     n = _flaky_post(c, httpx.ReadTimeout("slow"), 5)
     with pytest.raises(TranslateError) as ei:
@@ -249,8 +249,8 @@ def test_read_timeout_not_retried(make_transmart):
     assert n["n"] == 1
 
 
-def test_warm_retries_stale_connection_once(make_transmart):
-    srv = make_transmart(transmart_map(lambda t: "好"))
+def test_warm_retries_stale_connection_once(make_edge):
+    srv = make_edge(edge_map(lambda t: "好"))
     c = _client(srv)
     http = c._http()
     real, n = http.head, {"n": 0}
@@ -267,7 +267,7 @@ def test_warm_retries_stale_connection_once(make_transmart):
 
 
 def test_warm_stale_twice_still_swallowed():
-    c = TencentClient(url="http://127.0.0.1:1/api/imt")
+    c = MicrosoftClient(url="http://127.0.0.1:1/translate/translatetext")
     http = c._http()
     n = {"n": 0}
 

@@ -1,6 +1,7 @@
 """配置：读 config.toml（新格式）或旧的 config.local.toml（[vllm]/[fallback]），写回 config.toml。
 
-新格式的节：[general] [primary] [backup] [tencent] [hotkey] [translate] [timeouts] [history]。
+新格式的节：[general] [primary] [backup] [free] [hotkey] [translate] [timeouts] [history]。
+[free] 是免 key 的免费翻译层（现在是微软翻译）；以前叫 [tencent]（腾讯交互翻译，2026-10 失效），没有 [free] 时照读 [tencent]。
 api_key 加密存为 api_key_enc（DPAPI，见 secret.py）；手写的明文 api_key 也认，下次保存时转为加密并删去明文。
 旧格式（有 [vllm]/[fallback]、没有 [primary]/[backup]）先由 legacy_to_v2 转成新格式再读，含义不变：
 vLLM 没填 key = 不用主服务；超时沿用旧默认值（连接 2、首字 3、断流 10）。"""
@@ -30,10 +31,11 @@ LANGUAGES = ("zh", "en")
 THINKING_STYLES = tuple(THINKING_OFF_FIELDS)
 # 只对旧格式（[vllm]/[fallback]）文件：没写 [tencent] enabled 时按开着算——那个年代默认开着，
 # 迁移后不能悄悄没了兜底（迁移会写成显式的 enabled = true）。新格式文件没写 = 关（与 Config() 一致），
-# 免得新用户手写的配置在主服务失败时悄悄把文字发给腾讯。程序自己写的 config.toml 一向显式写出 enabled。
-LEGACY_TENCENT_IF_UNSET = True
-SECTIONS = ("general", "primary", "backup", "tencent", "hotkey", "translate", "timeouts", "history")
+# 免得新用户手写的配置在主服务失败时悄悄把文字发给第三方。程序自己写的 config.toml 一向显式写出 enabled。
+LEGACY_FREE_IF_UNSET = True
+SECTIONS = ("general", "primary", "backup", "free", "hotkey", "translate", "timeouts", "history")
 _LEGACY_SECTIONS = ("vllm", "fallback")
+_OLD_FREE_SECTION = "tencent"  # [free] 的旧名：只读不写
 _SECRET_KEYS = frozenset({"api_key", "api_key_enc"})
 HEADER = "截图翻译的配置（由程序写入；手改后在托盘点「重新加载配置」）。\nAPI key 已加密，换电脑或换用户需要重新填写。"
 
@@ -78,8 +80,8 @@ class Config:
     backup_stall_timeout: float = 20.0
     history_limit: int = 200
     history_save_images: bool = True  # 历史记录连同截图（原图、译文图，PNG）一起存在 history_images\
-    tencent_enabled: bool = False   # 默认不用腾讯兜底；旧格式文件没写这一项的例外见 LEGACY_TENCENT_IF_UNSET
-    tencent_connect_timeout: float = 6.0
+    free_enabled: bool = False   # 默认不用免费翻译层（会把文字发给第三方）；旧格式文件没写这一项的例外见 LEGACY_FREE_IF_UNSET
+    free_connect_timeout: float = 6.0
 
 
 # (节, 键, 字段名, 类型)。默认值一律取 Config() 的，不在这里重复写
@@ -100,8 +102,8 @@ _SCHEMA = [
     ("timeouts", "backup_stall", "backup_stall_timeout", float),
     ("history", "limit", "history_limit", int),
     ("history", "save_images", "history_save_images", bool),
-    ("tencent", "enabled", "tencent_enabled", bool),
-    ("tencent", "connect", "tencent_connect_timeout", float),
+    ("free", "enabled", "free_enabled", bool),
+    ("free", "connect", "free_connect_timeout", float),
 ]
 _SERVICE_SCHEMA = [("preset", str), ("base_url", str), ("model", str), ("thinking_off", bool), ("thinking_style", str)]
 _MIN1 = [("[translate] chunk_chars", "chunk_chars"), ("[translate] chunk_max_segments", "chunk_max_segments"),
@@ -110,7 +112,7 @@ _POSITIVE = [("[timeouts] connect", "connect_timeout"), ("[timeouts] first_token
              ("[timeouts] stall", "stall_timeout"), ("[timeouts] breaker", "breaker_seconds"),
              ("[timeouts] backup_connect", "backup_connect_timeout"),
              ("[timeouts] backup_first_token", "backup_first_token_timeout"),
-             ("[timeouts] backup_stall", "backup_stall_timeout"), ("[tencent] connect", "tencent_connect_timeout")]
+             ("[timeouts] backup_stall", "backup_stall_timeout"), ("[free] connect", "free_connect_timeout")]
 
 
 @dataclass(frozen=True)
@@ -227,7 +229,7 @@ def is_legacy(raw: dict) -> bool:
 
 def _check_tables(raw: dict) -> None:
     """已知的节（新旧都算）必须是一节（dict）；写成 `vllm = 3` 之类的普通值就报 ConfigError。"""
-    for section in SECTIONS + _LEGACY_SECTIONS:
+    for section in SECTIONS + _LEGACY_SECTIONS + (_OLD_FREE_SECTION,):
         if section in raw and not isinstance(raw[section], dict):
             raise ConfigError(t("config.err.not_table", section=section, type=type(raw[section]).__name__))
 
@@ -295,6 +297,8 @@ def config_from_raw(raw: dict) -> Config:
     legacy = is_legacy(raw)
     if legacy:
         raw = legacy_to_v2(raw)
+    if "free" not in raw and _OLD_FREE_SECTION in raw:  # 腾讯失效前写的配置：开着腾讯兜底 = 开着现在的免费翻译
+        raw = {**raw, "free": raw[_OLD_FREE_SECTION]}
     d = Config()
     values = {fname: _get(raw.get(section, {}), section, key, typ, getattr(d, fname))
               for section, key, fname, typ in _SCHEMA}
@@ -305,8 +309,8 @@ def config_from_raw(raw: dict) -> Config:
     if "clipboard" not in raw.get("hotkey", {}) and same_combo(values["clip_hotkey"], values["hotkey"]):
         # 老配置的截图键正好是「复制后翻译」的默认键：不能因为新功能的默认值撞了就启动不了，这个功能先关着
         values["clip_hotkey"] = ""
-    if legacy and "enabled" not in raw.get("tencent", {}):
-        values["tencent_enabled"] = LEGACY_TENCENT_IF_UNSET
+    if legacy and "enabled" not in raw.get("free", {}):
+        values["free_enabled"] = LEGACY_FREE_IF_UNSET
     values["primary"] = _service(raw.get("primary", {}), "primary")
     values["backup"] = _service(raw.get("backup", {}), "backup")
     c = Config(**values)
@@ -340,7 +344,7 @@ def config_to_dict(c: Config) -> dict[str, dict]:
         "general": {"language": c.language, "autostart": c.autostart},
         "primary": svc(c.primary),
         "backup": svc(c.backup),
-        "tencent": {"enabled": c.tencent_enabled, "connect": c.tencent_connect_timeout},
+        "free": {"enabled": c.free_enabled, "connect": c.free_connect_timeout},
         "hotkey": {"capture": c.hotkey, "clipboard": c.clip_hotkey},
         "translate": {"domain_hint": c.domain_hint, "chunk_chars": c.chunk_chars,
                       "chunk_max_segments": c.chunk_max_segments, "max_concurrency": c.max_concurrency},

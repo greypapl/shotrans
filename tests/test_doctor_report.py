@@ -37,7 +37,7 @@ def test_items_ids_labels_and_fixes(tmp_path):
     assert [(i.id, i.label, i.fix) for i in items] == [
         ("ocr_en", "OCR 英文", "lang_settings"), ("ocr_zh", "OCR 中文", "lang_settings"),
         ("config", "配置文件", "settings:service"), ("primary", "主服务", "settings:service"),
-        ("backup", "备用服务", "settings:service"), ("tencent", "腾讯兜底", "settings:service"),
+        ("backup", "备用服务", "settings:service"), ("free", "微软免费翻译", "settings:service"),
         ("hotkey", "快捷键", "settings:hotkey"), ("fonts", "字体", None)]
 
 
@@ -61,7 +61,7 @@ def test_unreadable_key_is_failure(tmp_path):
 def test_service_items_depend_on_config(tmp_path):
     deps = {i.id: i.depends_on for i in build_items(tmp_path)}
     assert deps == {"ocr_en": None, "ocr_zh": None, "config": None, "primary": "config", "backup": "config",
-                    "tencent": "config", "hotkey": None, "fonts": None}
+                    "free": "config", "hotkey": None, "fonts": None}
 
 
 # ---------- run_one：检查函数返回了怪东西 ----------

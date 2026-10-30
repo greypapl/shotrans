@@ -78,7 +78,7 @@ def test_pill_moves_with_translation_word_order():
 
 
 def test_no_spans_falls_back_to_text():
-    # 没给位置（旧缓存、腾讯不带占位符重翻）：照旧把胶囊文字当文字画，胶囊连描边抹掉
+    # 没给位置（旧缓存、免费翻译层不带占位符重翻）：照旧把胶囊文字当文字画，胶囊连描边抹掉
     img, pills = pill_scene()
     r = render(img, [seg_with(pills)], {1: "按 now.md 开始"}, "zh")
     assert colour_bbox(r.image, (216, 216, 215)) is None

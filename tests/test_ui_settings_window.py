@@ -49,20 +49,20 @@ def test_opens_on_requested_page(make):
 def test_loads_current_config(make):
     w, _ = make()
     assert w.primary.base_url.text() == "https://api.deepseek.com" and w.primary.api_key.text() == "sk-x"
-    assert w.backup.is_empty() and not w.tencent.isChecked()  # CFG 没开腾讯（全新默认是关）
+    assert w.backup.is_empty() and not w.free.isChecked()  # CFG 没开免费翻译层（全新默认是关）
     assert w.hotkey_edit.spec() == "Ctrl+Alt+Shift+F10"
     assert w.language.currentData() == "zh" and w.history_limit.value() == 200
 
 
-def test_tencent_checkbox_follows_config(make):
-    w, _ = make(config=replace(CFG, tencent_enabled=True))
-    assert w.tencent.isChecked()
+def test_free_checkbox_follows_config(make):
+    w, _ = make(config=replace(CFG, free_enabled=True))
+    assert w.free.isChecked()
 
 
-def test_tencent_checkbox_off_for_fresh_config(make):
+def test_free_checkbox_off_for_fresh_config(make):
     w, app = make(config=Config(primary=PRIMARY))  # 默认值 + 一个主服务（保存要求至少有一层可用）
-    assert not w.tencent.isChecked()
-    assert w.apply() is True and app.saved[-1].tencent_enabled is False
+    assert not w.free.isChecked()
+    assert w.apply() is True and app.saved[-1].free_enabled is False
 
 
 def test_unchanged_apply_saves_current_with_real_autostart_state(make):
@@ -160,10 +160,10 @@ def test_general_values_collected(make):
     w.language.setCurrentIndex(w.language.findData("en"))
     w.autostart.setChecked(True)
     w.history_limit.setValue(77)
-    w.tencent.setChecked(False)
+    w.free.setChecked(False)
     w.apply()
     c = app.saved[-1]
-    assert (c.language, c.autostart, c.history_limit, c.tencent_enabled) == ("en", True, 77, False)
+    assert (c.language, c.autostart, c.history_limit, c.free_enabled) == ("en", True, 77, False)
 
 
 def test_advanced_values_collected(make):
@@ -181,7 +181,7 @@ def test_advanced_reset_defaults(make):
         "chunk_chars": 600, "chunk_max_segments": 8, "max_concurrency": 4,
         "connect_timeout": 6.0, "first_token_timeout": 10.0, "stall_timeout": 20.0,
         "backup_connect_timeout": 6.0, "backup_first_token_timeout": 10.0, "backup_stall_timeout": 20.0,
-        "breaker_seconds": 60.0, "tencent_connect_timeout": 6.0}
+        "breaker_seconds": 60.0, "free_connect_timeout": 6.0}
 
 
 def test_advanced_has_tips(make):

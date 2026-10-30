@@ -58,7 +58,7 @@ FAKE_ZH = [
     "逐元素运算，这给调优自己流水线的从业者提供了一条简单的经验法则。",
 ]
 CAPTION = "Ctrl+Alt+Q → 框选 select → 原位译文 in-place translation"
-ROLE_LABEL = {"vllm": "主服务", "fallback": "备用服务", "tencent": "腾讯兜底", "fake": "假译文（--fake）"}
+ROLE_LABEL = {"vllm": "主服务", "fallback": "备用服务", "microsoft": "微软免费翻译", "fake": "假译文（--fake）"}
 
 
 class StepFailed(Exception):
@@ -177,7 +177,7 @@ def translate(img: Image.Image, fake: bool) -> tuple[Image.Image, dict]:
     good = {i: r for i, r in results.items() if r.is_translation}
     missing = [s.idx for s in todo if s.idx not in good]
     if missing:
-        raise StepFailed(f"翻译失败：{len(todo)} 段里有 {len(missing)} 段没译出来（主服务、备用服务、腾讯兜底都没成功）。"
+        raise StepFailed(f"翻译失败：{len(todo)} 段里有 {len(missing)} 段没译出来（主服务、备用服务、微软免费翻译都没成功）。"
                          "请在托盘程序里点「测试连接」检查服务，没写动图。")
     no_zh = [i for i, r in good.items() if direction == "en2zh" and not re.search(r"[\u4e00-\u9fff]", r.text)]
     if no_zh:

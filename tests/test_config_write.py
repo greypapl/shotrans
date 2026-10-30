@@ -16,7 +16,7 @@ def _full():
         chunk_chars=321, chunk_max_segments=3, max_concurrency=2,
         connect_timeout=1.25, first_token_timeout=4.5, stall_timeout=12.0, breaker_seconds=30.0,
         backup_connect_timeout=2.5, backup_first_token_timeout=8.5, backup_stall_timeout=15.5,
-        history_limit=77, tencent_enabled=False, tencent_connect_timeout=7.0)
+        history_limit=77, free_enabled=False, free_connect_timeout=7.0)
 
 
 def test_round_trip(tmp_path):
@@ -134,7 +134,7 @@ def test_sections_in_order_with_header(tmp_path):
     text = p.read_text(encoding="utf-8")
     assert text.startswith("# ")
     assert [ln for ln in text.splitlines() if ln.startswith("[")] == [
-        "[general]", "[primary]", "[backup]", "[tencent]", "[hotkey]", "[translate]", "[timeouts]", "[history]"]
+        "[general]", "[primary]", "[backup]", "[free]", "[hotkey]", "[translate]", "[timeouts]", "[history]"]
 
 
 def test_autostart_none_not_written(tmp_path):

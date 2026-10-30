@@ -58,8 +58,8 @@ def make3(vllm_script=None, fb_script=None, tc_script=None, clock=None, glossary
     """三层：某层脚本传 None 就是没配置这一层（Router 拿到 None）。"""
     v = FakeService("vllm", vllm_script) if vllm_script else None
     m = FakeService("fallback", fb_script) if fb_script else None
-    t = FakeService("tencent", tc_script) if tc_script else None
-    return Router(v, m, glossary, breaker_seconds=60, clock=clock or Clock(), tencent=t), v, m, t
+    t = FakeService("microsoft", tc_script) if tc_script else None
+    return Router(v, m, glossary, breaker_seconds=60, clock=clock or Clock(), free=t), v, m, t
 
 
 def make_no_fb(vllm_script, clock=None):

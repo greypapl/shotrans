@@ -76,19 +76,19 @@ class Segment:
         return b
 
 
-# 腾讯丢了占位符时改用不带占位符的原文重翻：text 是译文，但引用、术语表「保持原样」的词可能被翻了
+# 免费翻译层丢了占位符时改用不带占位符的原文重翻：text 是译文，但引用、术语表「保持原样」的词可能被翻了
 NOTE_UNPROTECTED = "引用/术语可能未保持原样"
 
 
 @dataclass(frozen=True)
 class SegmentResult:
-    """一段的翻译结果。service 是 "vllm" / "fallback" / "tencent" / "none"。
+    """一段的翻译结果。service 是 "vllm" / "fallback" / "microsoft"（免费翻译层）/ "none"。
     note 不为空时要在段落右上角画角标、悬停附上原因：
     - 一般的 note（占位符丢失、服务不可用等）：text 是原文，不画译文；
     - NOTE_UNPROTECTED：text 是译文，照常画，只是提醒引用/术语可能没保持原样。
     pill_spans（Task 22）：行内代码胶囊在 text 里的位置 (起, 止, 是段落 pills 里的第几个)，text[起:止] 就是
     那个胶囊的文字（复制、历史、悬停照常用 text，胶囊文字照常在里面）。绘制时这一处贴回原图上那块胶囊；
-    为空（缓存是旧的、腾讯不带占位符重翻、拿不准位置）就照旧把胶囊文字当普通文字画。"""
+    为空（缓存是旧的、免费翻译层不带占位符重翻、拿不准位置）就照旧把胶囊文字当普通文字画。"""
 
     idx: int
     text: str

@@ -34,7 +34,7 @@ def test_bool_not_accepted_for_int():
 
 
 def test_switch_must_be_bool():
-    assert _codes(Config(tencent_enabled=1)) == [("[tencent] enabled", "type")]
+    assert _codes(Config(free_enabled=1)) == [("[free] enabled", "type")]
 
 
 def test_autostart_type_checked():

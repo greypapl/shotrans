@@ -54,6 +54,17 @@ PRESETS: tuple[Preset, ...] = (
            "Pay as you go; deepseek-flash off-peak ≈ $0.15 in / $0.6 out per 1M tokens, "
            "double at weekday peak hours (see the official pricing page)",
            "deepseek", True),
+    # 2026-10-30：模型页 https://docs.bigmodel.cn/cn/guide/models/free/glm-4.7-flash（在「免费模型」目录下，
+    # 200K 上下文；页面没写价格和限流）；接口 https://open.bigmodel.cn/api/paas/v4/chat/completions，OpenAI 兼容格式；
+    # 拿 key 的页面见快速开始 https://docs.bigmodel.cn/cn/guide/start/quick-start；
+    # GLM-4.7 默认开思考，关法 thinking: {"type": "disabled"}（同 DeepSeek 写法，见 AgentScope 的 GLM 集成说明）。
+    # 没有 key，未用真 key 实测。
+    Preset("zhipu", "智谱 GLM-4.7-Flash（免费）", "Zhipu GLM-4.7-Flash (free)", "https://open.bigmodel.cn/api/paas/v4",
+           "glm-4.7-flash", "https://bigmodel.cn/usercenter/proj-mgmt/apikeys",
+           "免费模型，用手机号注册就能拿 key；有并发和频率限制（以官网为准）",
+           "Free model; sign up with a phone number to get a key; concurrency and rate limits apply "
+           "(see the official site)",
+           "deepseek", True),
     # 核实 2026-10-14：https://docs.siliconflow.cn/cn/api-reference/chat-completions/chat-completions
     # （模型在 https://cloud.siliconflow.cn/open/models 仍在列、未标弃用；非思考模型，不发关闭字段）
     Preset("siliconflow", "硅基流动", "SiliconFlow", "https://api.siliconflow.cn/v1", "Qwen/Qwen2.5-7B-Instruct",
@@ -78,6 +89,16 @@ PRESETS: tuple[Preset, ...] = (
            "按量计费；gpt-6-luna 约输入 $0.10、输出 $0.50 每百万 token（以官网价格为准）",
            "Pay as you go; gpt-6-luna ≈ $0.10 in / $0.50 out per 1M tokens (see the official pricing page)",
            "openai_reasoning", True),
+    # 2026-10-30：本机 Ollama，OpenAI 兼容地址 http://localhost:11434/v1（https://docs.ollama.com/api/openai-compatibility），
+    # 不要 key；关思考用 reasoning_effort = "none"。模型 qwen3:8b 是 https://ollama.com/library/qwen3 的默认标签（5.2 GB），
+    # 机器弱可改 qwen3:4b（2.5 GB）。本机地址自动绕过系统代理（is_local_host）。
+    Preset("ollama", "Ollama（本机）", "Ollama (local)", "http://localhost:11434/v1", "qwen3:8b",
+           "https://ollama.com/download",
+           "本机运行，免费、文字不出电脑，不用 key。先装 Ollama，再运行 ollama pull qwen3:8b（5.2 GB）；"
+           "建议 8GB 显存，配置一般用 qwen3:4b",
+           "Runs on your computer: free, text stays local, no key. Install Ollama, then run "
+           "ollama pull qwen3:8b (5.2 GB); 8 GB VRAM recommended, use qwen3:4b on modest machines",
+           "ollama", True),
     Preset("custom", "自定义", "Custom", "", "", "", "", "", "chat_template_kwargs", True),
 )
 

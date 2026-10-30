@@ -5,6 +5,7 @@ import json
 import socket
 import threading
 import time
+from urllib.parse import parse_qsl
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from shotrans.translate.base import Job
@@ -96,8 +97,9 @@ def sse_chunks(chunks, delay=0.0):
     return handler
 
 
-class FakeTransmart(_Server):
-    """假的腾讯交互翻译接口（POST /api/imt）。handler(h, payload) 负责写响应。"""
+class FakeEdge(_Server):
+    """假的微软 Edge 翻译接口（POST /translate/translatetext?from=..&to=..）。handler(h, payload) 负责写响应；
+    payload 是请求体（字符串数组）。requests 里另记 query（解析好的参数）和 user_agent。"""
 
     def __init__(self, handler):
         self.requests: list[dict] = []
@@ -123,25 +125,28 @@ class FakeTransmart(_Server):
             def do_POST(self):
                 n = int(self.headers.get("Content-Length", 0))
                 raw = self.rfile.read(n)
+                path, _, query = self.path.partition("?")
                 outer.requests.append({"content_type": self.headers.get("Content-Type"),
-                                       "path": self.path, "json": json.loads(raw), "at": time.monotonic()})
+                                       "user_agent": self.headers.get("User-Agent"),
+                                       "path": path, "query": dict(parse_qsl(query, keep_blank_values=True)),
+                                       "json": json.loads(raw), "at": time.monotonic()})
                 try:
                     handler(self, outer.requests[-1]["json"])
                 except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
                     pass
 
         super().__init__(H)
-        self.url = self.base + "/api/imt"
+        self.url = self.base + "/translate/translatetext"
 
 
-def transmart_reply(h, translations, ret_code="succ", code=200):
-    _json(h, code, {"header": {"ret_code": ret_code}, "auto_translation": translations})
+def edge_reply(h, translations, code=200):
+    _json(h, code, [{"translations": [{"text": s, "to": "zh-Hans"}]} for s in translations])
 
 
-def transmart_map(fn):
-    """每段原文经 fn 变成译文，按 TranSmart 的格式回。"""
+def edge_map(fn):
+    """每段原文经 fn 变成译文，按 Edge 翻译接口的格式回。"""
     def handler(h, payload):
-        transmart_reply(h, [fn(t) for t in payload["source"]["text_list"]])
+        edge_reply(h, [fn(t) for t in payload])
     return handler
 
 

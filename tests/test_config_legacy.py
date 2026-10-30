@@ -78,22 +78,22 @@ def test_is_legacy():
     assert is_legacy({"fallback": {}}) is True
     assert is_legacy({"vllm": {}, "primary": {}}) is False
     assert is_legacy({"fallback": {}, "backup": {}}) is False
-    assert is_legacy({"tencent": {}}) is False
+    assert is_legacy({"microsoft": {}}) is False
     assert is_legacy({}) is False
 
 
 def test_legacy_to_v2_pure():
-    raw = {"vllm": {"api_key": "k"}, "tencent": {"enabled": False}, "timeouts": {"stall": 9}}
+    raw = {"vllm": {"api_key": "k"}, "microsoft": {"enabled": False}, "timeouts": {"stall": 9}}
     assert legacy_to_v2(raw) == {
         "general": {"language": "zh"},
         "primary": {"preset": "custom", "base_url": "", "api_key": "k", "model": "",
                     "thinking_off": True, "thinking_style": "chat_template_kwargs"},
         "backup": {"preset": "custom", "base_url": "", "api_key": "", "model": "",
                    "thinking_off": False, "thinking_style": "chat_template_kwargs"},
-        "tencent": {"enabled": False},
+        "microsoft": {"enabled": False},
         "timeouts": {"stall": 9, "connect": 2.0, "first_token": 3.0, "backup_connect": 2.0},
     }
-    assert raw == {"vllm": {"api_key": "k"}, "tencent": {"enabled": False}, "timeouts": {"stall": 9}}  # 不改入参
+    assert raw == {"vllm": {"api_key": "k"}, "microsoft": {"enabled": False}, "timeouts": {"stall": 9}}  # 不改入参
 
 
 def test_legacy_fallback_timeouts_moved():
@@ -144,7 +144,7 @@ def test_legacy_to_v2_other_section_not_table_not_dropped():
 
 def test_legacy_to_v2_rejects_new_format():
     with pytest.raises(ConfigError, match="不是旧格式"):
-        legacy_to_v2({"tencent": {"enabled": False}, "hotkey": {"capture": "Ctrl+Alt+W"}})
+        legacy_to_v2({"microsoft": {"enabled": False}, "hotkey": {"capture": "Ctrl+Alt+W"}})
 
 
 def test_legacy_to_v2_rejects_mixed_without_overwriting():

@@ -31,6 +31,7 @@ def _to_service(w):
     w.next()  # welcome → env
     w.next()  # env → service
     assert w.page() == "service"
+    w.mode_llm.setChecked(True)  # 这里的测试都走「大模型服务」；免费模式见 test_ui_wizard_free.py
 
 
 def _pass_test(qtbot, w):
@@ -151,8 +152,8 @@ def test_finish_saves_config_and_reports_completed(qtbot, make):
 
 
 def test_finish_keeps_other_settings(qtbot, tmp_path, track):
-    """引导只改语言、开机自启、主服务、快捷键；程序已有的其它设置（这里是腾讯开、历史 50 条，都不是默认值）原样保留。"""
-    app = FakeApp(tmp_path, Config(tencent_enabled=True, history_limit=50))
+    """引导只改语言、开机自启、主服务、快捷键；程序已有的其它设置（这里是免费翻译层开、历史 50 条，都不是默认值）原样保留。"""
+    app = FakeApp(tmp_path, Config(free_enabled=True, history_limit=50))
     w = Wizard(app, languages_fn=lambda: ["en-US"], tester=lambda svc: ConnResult("ok", 1.0, "", "好", "m"),
                lister=lambda u, k: ModelsResult("ok", ("m",)), open_url=lambda u: None, warn=lambda s: None)
     track(w)
@@ -161,17 +162,17 @@ def test_finish_keeps_other_settings(qtbot, tmp_path, track):
     _pass_test(qtbot, w)
     w.next()
     assert w.finish() is True
-    assert app.saved[0].tencent_enabled is True and app.saved[0].history_limit == 50
+    assert app.saved[0].free_enabled is True and app.saved[0].history_limit == 50
 
 
-def test_fresh_wizard_saves_tencent_off(qtbot, make):
-    """全新安装（程序配置 = Config()）：引导写出的配置不开腾讯兜底。"""
+def test_fresh_wizard_saves_free_off(qtbot, make):
+    """全新安装（程序配置 = Config()）：引导写出的配置不开免费翻译层兜底。"""
     w, app = make()
     _to_service(w)
     _pass_test(qtbot, w)
     w.next()
     assert w.finish() is True
-    assert app.saved[0].tencent_enabled is False
+    assert app.saved[0].free_enabled is False
 
 
 def test_try_now_starts_capture(qtbot, make):
