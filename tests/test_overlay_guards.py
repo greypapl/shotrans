@@ -9,8 +9,10 @@ import pytest
 import shiboken6  # noqa: F401  (测试里用 isValid 检查窗口已释放)
 from PIL import Image
 from PySide6.QtCore import QEvent, QPoint, QPointF, QRect, Qt
-from PySide6.QtGui import QContextMenuEvent, QGuiApplication, QMouseEvent
+from PySide6.QtGui import QContextMenuEvent, QFontMetrics, QGuiApplication, QMouseEvent
+from PySide6.QtWidgets import QApplication
 
+from shotrans import overlay
 from shotrans.models import Box, OcrLine, SegmentResult
 from shotrans.overlay import OverlayWindow
 from shotrans.session import Session
@@ -876,6 +878,32 @@ def test_hover_shows_translation_in_original_view(qtbot, make, tip):
     w._hover_pos = QPoint(20, 28 + 15)
     w._show_hover()
     assert tip.shown == ["译1"]
+
+
+LONG = ("While the linear transformations are the same across different positions, they use different "
+        "parameters from layer to layer & <keep> this.")
+
+
+def test_hover_long_original_wraps_instead_of_one_line(qtbot, make, tip):
+    # 纯文本提示框不换行，长段落会成一整行冲出屏幕；要转成按宽度折行的富文本，< > & 照原样显示
+    w = make(lines=[OcrLine(LONG, Box(10, 10, 150, 20))])
+    _settle(qtbot, w, 1)
+    w._hover_pos = QPoint(20, 28 + 15)
+    w._show_hover()
+    [shown] = tip.shown
+    assert f"<table width='{overlay.HOVER_MIN_W}'>" in shown
+    assert "&amp; &lt;keep&gt; this." in shown
+
+
+def test_wrap_tip_width_follows_segment_within_bounds():
+    fm = QFontMetrics(QApplication.font("QTipLabel"))
+    assert overlay.wrap_tip("short", 400, fm) == "short"
+    assert "<table width='400'>" in overlay.wrap_tip(LONG, 400, fm)
+    assert overlay.wrap_tip("a\nb", 400, fm) == "a\nb"
+    assert "first<br>" in overlay.wrap_tip("first\n" + LONG, 400, fm)
+    assert overlay.hover_width(100) == overlay.HOVER_MIN_W
+    assert overlay.hover_width(500) == 500
+    assert overlay.hover_width(5000) == overlay.HOVER_MAX_W
 
 
 def test_hover_on_blank_shows_nothing(qtbot, make, tip):

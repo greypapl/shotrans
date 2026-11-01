@@ -10,6 +10,7 @@
 或窗口最后一个引用在工作线程里被释放时，整个进程会 access violation。）"""
 from __future__ import annotations
 
+import html
 import logging
 import queue
 import threading
@@ -18,8 +19,8 @@ from pathlib import Path
 from typing import Callable
 
 from PySide6.QtCore import QEvent, QPoint, QRect, Qt, QTimer, Signal
-from PySide6.QtGui import QColor, QContextMenuEvent, QGuiApplication, QPainter, QPen, QPixmap
-from PySide6.QtWidgets import QDialog, QHBoxLayout, QLabel, QMenu, QToolButton, QToolTip, QWidget
+from PySide6.QtGui import QColor, QContextMenuEvent, QFontMetrics, QGuiApplication, QPainter, QPen, QPixmap
+from PySide6.QtWidgets import QApplication, QDialog, QHBoxLayout, QLabel, QMenu, QToolButton, QToolTip, QWidget
 
 from . import i18n
 from .glossary import load_glossary
@@ -78,7 +79,20 @@ def place_window(rect: QRect, screen: QRect) -> tuple[QRect, QRect, int]:
 
 OCR_GEN = -1  # 识别阶段的消息用这个代际（不属于任何翻译代际）
 POLL_MS = 30  # 界面线程取队列的间隔
+HOVER_MIN_W, HOVER_MAX_W = 320, 720  # 悬停提示的折行宽度：跟段落在屏幕上的宽度，限在这个范围里
 RENDER_MIN_S = 0.12  # 两次整图重画之间至少隔这么久；期间到的结果只记进状态，到点补一次（最终状态一定会画出来）
+
+
+def hover_width(seg_w: float) -> int:
+    return int(min(max(seg_w, HOVER_MIN_W), HOVER_MAX_W))
+
+
+def wrap_tip(text: str, width: int, fm: QFontMetrics) -> str:
+    """QToolTip 的纯文本不换行，长段落会成一整行冲出屏幕。有一行比 width 宽，就转成按 width 折行的富文本。"""
+    if all(fm.horizontalAdvance(line) <= width for line in text.split("\n")):
+        return text
+    body = html.escape(text).replace("\n", "<br>")
+    return f"<table width='{width}'><tr><td>{body}</td></tr></table>"
 
 
 class OverlayWindow(QWidget):
@@ -459,6 +473,8 @@ class OverlayWindow(QWidget):
         if seg is not None:
             text = self.session.hover_text(seg)
             if text:
+                fm = QFontMetrics(QApplication.font("QTipLabel"))
+                text = wrap_tip(text, hover_width(seg.box.w / self._scale), fm)
                 QToolTip.showText(self.mapToGlobal(self._hover_pos), text, self)
 
     def contextMenuEvent(self, e) -> None:
