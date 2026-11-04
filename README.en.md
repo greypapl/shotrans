@@ -2,19 +2,36 @@
 
 [中文](README.md) | English
 
-A screenshot translator for Windows. Press a hotkey, select part of the screen, and the translation is drawn over the original text, keeping the layout.
+**Select it, and the translation is drawn right over the original.** A screenshot translator for Windows: text in scanned PDFs, paused videos, games and app interfaces gets translated even when you can't copy it, and the layout stays intact.
 
-![demo](docs/demo.gif)
+Free · Portable, just unzip · Text recognition runs on your PC · English ↔ Chinese
 
-## Features
+<p align="center"><img src="docs/demo-alice.gif" width="420" alt="Selecting a scanned page of an old book; the Chinese translation is drawn over it in the same layout, hovering shows the original, and one click toggles original and translation"></p>
+<p align="center"><sub>Demo material: a scan of Lewis Carroll's <i>Alice's Adventures in Wonderland</i> (1866 edition, public domain). Not sped up.</sub></p>
 
-- Works on screenshots, so it translates text in images, scanned PDFs, videos, games and app interfaces. The text doesn't need to be selectable.
-- The translation sits where the original was, so you don't lose your place. Hover over a paragraph to see the original.
-- Portable: unzip and run, no installer or account. It stays in the system tray.
-- Text recognition uses Windows' built-in OCR on your machine. Translation uses a model you configure: any OpenAI-compatible API, including a local or self-hosted one.
-- A glossary lets you fix how terms are translated, and inline code is kept as is.
+**[Download the latest version](https://github.com/greypapl/shotrans/releases/latest)** (Windows 10 / 11)
 
-Currently translates English to Chinese and Chinese to English.
+## What it does
+
+### Translate text you can't copy
+
+Press `Ctrl+Alt+Q` and select any part of the screen: images, scans, a paused video, a game, an app's interface. The text doesn't need to be selectable.
+
+### The translation stays in place
+
+Headings, paragraphs and inline code are redrawn in the original layout, so you don't lose your place. Hover over a paragraph to see the original, toggle original and translation with the toolbar's "Orig/Trans" button (or Space), and double-click to copy the translation.
+
+### Fix a word on the spot
+
+Right-click the paragraph → "Add to glossary…", select the word and enter the translation you want. It is saved to your glossary, paragraphs that use it are retranslated right away, and it is used from then on.
+
+### Writing papers: Chinese draft to English in one keystroke
+
+Text you can copy doesn't need a screenshot: press `Ctrl+C`, then `Ctrl+Alt+C`, and the translation pops up next to the mouse. Chinese goes to English, using your glossary too.
+
+### Free to use
+
+Microsoft's free translation works without an API key. For better translations, get a free Zhipu key and use an AI model; with a dedicated GPU you can run one on your own PC with Ollama. See [Translation services](#translation-services).
 
 ## Download
 
@@ -24,12 +41,11 @@ Requires Windows 10 or 11 with the OCR language packs for English and/or Chinese
 
 ## Usage
 
-1. On first run, pick a translation service in the wizard. No API key? Choose "Free: Microsoft Translator" and run the connection test. With a key, choose an AI model service, enter the key and run the test.
+1. On first run, pick a translation service in the wizard. An AI model service is recommended (Zhipu gives free keys): enter the key and run the test. Don't want to sign up? Choose "Free: Microsoft Translator" and run the connection test.
 2. Press `Ctrl+Alt+Q` (configurable) and select the area to translate.
 3. Hover to see the original, double-click to copy, right-click a paragraph to retranslate with another service, right-click empty space or press `Esc` to close.
 4. If a word comes out wrong, right-click that paragraph → "Add to glossary…", select the word and enter the translation you want. It is saved to the glossary and every paragraph using it is retranslated.
-
-Text you can copy doesn't need a screenshot: press `Ctrl+C`, then `Ctrl+Alt+C` (configurable), and the translation pops up next to the mouse. Chinese goes to English, which is handy for turning a Chinese draft into English with your own glossary.
+5. For text you can copy: press `Ctrl+C`, then `Ctrl+Alt+C` (configurable), and the translation pops up next to the mouse.
 
 Past translations, including the screenshots, are under "History" in the tray menu.
 
