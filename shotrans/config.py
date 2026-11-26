@@ -1,6 +1,6 @@
 """配置：读 config.toml（新格式）或旧的 config.local.toml（[vllm]/[fallback]），写回 config.toml。
 
-新格式的节：[general] [primary] [backup] [free] [hotkey] [translate] [timeouts] [history]。
+新格式的节：[general] [primary] [backup] [free] [hotkey] [select] [translate] [timeouts] [history]。
 [free] 是免 key 的免费翻译层（现在是微软翻译）；以前叫 [tencent]（腾讯交互翻译，2026-10 失效），没有 [free] 时照读 [tencent]。
 api_key 加密存为 api_key_enc（DPAPI，见 secret.py）；手写的明文 api_key 也认，下次保存时转为加密并删去明文。
 旧格式（有 [vllm]/[fallback]、没有 [primary]/[backup]）先由 legacy_to_v2 转成新格式再读，含义不变：
@@ -10,6 +10,7 @@ from __future__ import annotations
 import dataclasses
 import math
 import os
+import re
 import shutil
 import tomllib
 from dataclasses import dataclass, field
@@ -33,7 +34,7 @@ THINKING_STYLES = tuple(THINKING_OFF_FIELDS)
 # 迁移后不能悄悄没了兜底（迁移会写成显式的 enabled = true）。新格式文件没写 = 关（与 Config() 一致），
 # 免得新用户手写的配置在主服务失败时悄悄把文字发给第三方。程序自己写的 config.toml 一向显式写出 enabled。
 LEGACY_FREE_IF_UNSET = True
-SECTIONS = ("general", "primary", "backup", "free", "hotkey", "translate", "timeouts", "history")
+SECTIONS = ("general", "primary", "backup", "free", "hotkey", "select", "translate", "timeouts", "history")
 _LEGACY_SECTIONS = ("vllm", "fallback")
 _OLD_FREE_SECTION = "tencent"  # [free] 的旧名：只读不写
 _SECRET_KEYS = frozenset({"api_key", "api_key_enc"})
@@ -82,6 +83,8 @@ class Config:
     history_save_images: bool = True  # 历史记录连同截图（原图、译文图，PNG）一起存在 history_images\
     free_enabled: bool = False   # 默认不用免费翻译层（会把文字发给第三方）；旧格式文件没写这一项的例外见 LEGACY_FREE_IF_UNSET
     free_connect_timeout: float = 6.0
+    select_enabled: bool = True
+    select_exclude: list[str] = field(default_factory=list)
 
 
 # (节, 键, 字段名, 类型)。默认值一律取 Config() 的，不在这里重复写
@@ -89,6 +92,8 @@ _SCHEMA = [
     ("general", "language", "language", str),
     ("hotkey", "capture", "hotkey", str),
     ("hotkey", "clipboard", "clip_hotkey", str),
+    ("select", "enabled", "select_enabled", bool),
+    ("select", "exclude", "select_exclude", list),
     ("translate", "domain_hint", "domain_hint", str),
     ("translate", "chunk_chars", "chunk_chars", int),
     ("translate", "chunk_max_segments", "chunk_max_segments", int),
@@ -157,6 +162,8 @@ def _type_ok(v, typ) -> bool:
         return typ is bool
     if typ is float:
         return isinstance(v, (int, float))
+    if typ is list:
+        return isinstance(v, list) and all(isinstance(item, str) for item in v)
     return isinstance(v, typ)
 
 
@@ -320,16 +327,32 @@ def config_from_raw(raw: dict) -> Config:
     return c
 
 
-def load_config(path: Path) -> Config:
+def _parse_config(text: str, path: Path) -> dict:
+    try:
+        return tomllib.loads(text.removeprefix("\ufeff"))
+    except tomllib.TOMLDecodeError as e:
+        raise ConfigError(t("config.err.syntax", error=e)) from e
+
+
+def _read_config(path: Path) -> str:
     if not path.exists():
         raise ConfigError(t("config.err.missing", path=path))
     try:
-        raw = tomllib.loads(path.read_text(encoding="utf-8-sig"))  # 记事本另存可能带 BOM
+        return path.read_bytes().decode("utf-8")
     except UnicodeDecodeError as e:
         raise ConfigError(t("config.err.not_utf8", path=path)) from e
-    except tomllib.TOMLDecodeError as e:
-        raise ConfigError(t("config.err.syntax", error=e)) from e
-    return config_from_raw(raw)
+
+
+def load_config(path: Path) -> Config:
+    return config_from_raw(_parse_config(_read_config(path), path))
+
+
+def load_startup_config(path: Path, *, missing_ok: bool = True) -> tuple[Config, bool]:
+    """托盘可在引导完成前保存划词设置。仅有该节的文件仍需引导。"""
+    if missing_ok and not path.exists():
+        return Config(), True
+    raw = _parse_config(_read_config(path), path)
+    return config_from_raw(raw), raw.keys() == {"select"}
 
 
 def config_to_dict(c: Config) -> dict[str, dict]:
@@ -346,6 +369,7 @@ def config_to_dict(c: Config) -> dict[str, dict]:
         "backup": svc(c.backup),
         "free": {"enabled": c.free_enabled, "connect": c.free_connect_timeout},
         "hotkey": {"capture": c.hotkey, "clipboard": c.clip_hotkey},
+        "select": {"enabled": c.select_enabled, "exclude": c.select_exclude},
         "translate": {"domain_hint": c.domain_hint, "chunk_chars": c.chunk_chars,
                       "chunk_max_segments": c.chunk_max_segments, "max_concurrency": c.max_concurrency},
         "timeouts": {"connect": c.connect_timeout, "first_token": c.first_token_timeout,
@@ -372,13 +396,62 @@ def write_config(path: Path, c: Config) -> None:
         text = dump_toml(config_to_dict(c), header=HEADER)
     except secret.SecretError as e:
         raise ConfigError(t("config.err.encrypt", error=e)) from e
+    def verify(tmp: Path) -> None:
+        if _comparable(load_config(tmp)) != _comparable(c):
+            raise ConfigError(t("config.err.readback"))
+
+    _write_atomic(path, text, verify)
+
+
+_TABLE_LINE = re.compile(r"(?m)^[ \t]*\[")
+_SELECT_HEADER = re.compile(r"""[ \t]*\[[ \t]*(?:select|"select"|'select')[ \t]*\][ \t]*(?:#.*)?\r?$""")
+
+
+def _select_section(text: str, raw: dict, section: str) -> str:
+    if "select" not in raw:
+        return text + ("\n\n" if text and text != "\ufeff" else "") + section
+    start = None
+    for match in _TABLE_LINE.finditer(text.removeprefix("\ufeff")):
+        offset = match.start() + text.startswith("\ufeff")
+        try:
+            tomllib.loads(text[:offset].removeprefix("\ufeff"))
+        except tomllib.TOMLDecodeError:
+            continue  # 方括号可能在多行字符串或数组里。
+        if start is not None:
+            return text[:start] + section + "\n" + text[offset:]
+        end = text.find("\n", offset)
+        if _SELECT_HEADER.fullmatch(text[offset:end if end != -1 else len(text)]):
+            start = offset
+    if start is None:
+        raise ConfigError(t("config.err.readback"))
+    return text[:start] + section
+
+
+def write_select_config(path: Path, c: Config) -> None:
+    """只保存划词节，其他节原文、手写字段和密钥保持原样。"""
+    errs = [e for e in _type_errors(c) if e.field.startswith("[select]")]
+    if errs:
+        raise ConfigError(describe(errs[0]))
+    text = _read_config(path) if path.exists() else ""
+    raw = _parse_config(text, path)
+    wanted = {"enabled": c.select_enabled, "exclude": c.select_exclude}
+    section = dump_toml({"select": wanted})
+    if "\r\n" in text:
+        section = section.replace("\n", "\r\n")
+
+    def verify(tmp: Path) -> None:
+        if _parse_config(_read_config(tmp), path) != {**raw, "select": wanted}:
+            raise ConfigError(t("config.err.readback"))
+
+    _write_atomic(path, _select_section(text, raw, section), verify)
+
+
+def _write_atomic(path: Path, text: str, verify) -> None:
     tmp = path.with_name(path.name + ".tmp")
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
-        tmp.write_text(text, encoding="utf-8")
-        back = load_config(tmp)
-        if _comparable(back) != _comparable(c):
-            raise ConfigError(t("config.err.readback"))
+        tmp.write_text(text, encoding="utf-8", newline="")
+        verify(tmp)
         if path.exists():
             shutil.copy2(path, path.with_name(path.name + ".bak"))
         os.replace(tmp, path)

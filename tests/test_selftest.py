@@ -13,7 +13,7 @@ from shotrans.runtime import SingleInstance
 ROOT = Path(__file__).resolve().parents[1]
 PKG = ROOT / "shotrans"
 NAMES = ["imports", "stdlib-native", "texts", "window:settings", "window:wizard", "window:doctor",
-         "window:history", "window:about", "notice", "ocr"]
+         "window:history", "window:about", "notice", "selection", "ocr"]
 
 
 def _on_disk_modules():

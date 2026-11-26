@@ -49,6 +49,14 @@ Requires Windows 10 or 11 with the OCR language packs for English and/or Chinese
 
 Past translations, including the screenshots, are under "History" in the tray menu.
 
+### Translate selected text
+
+Drag across text, double-click a word, or triple-click a paragraph. Click the icon that appears by the pointer to translate in the existing pop-up with your glossary. Right-click the icon to hide it for the current program or turn off selection translation. You can also change these options in the tray menu or under Settings → Hotkeys.
+
+- Clicking the icon briefly uses the clipboard. With Win+V enabled, the source application's copy can appear in clipboard history. A few applications provide some clipboard formats on demand, such as a large range copied from Excel. Only the text may be restored in these cases.
+- Use screenshot translation for text in images and in apps that cannot copy the selection.
+- Standalone terminals are excluded. Windows UI Automation identifies integrated terminals in supported editors such as VS Code and Cursor and may increase their memory use. JetBrains terminals sometimes omit focus details, so the icon may appear there. Check that text is selected before clicking it in a JetBrains terminal.
+
 ## Translation services
 
 An AI model is recommended: translations are better and context-aware, and glossary translations are applied more reliably.

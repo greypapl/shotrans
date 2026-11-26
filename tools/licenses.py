@@ -7,7 +7,7 @@ import sys
 from importlib import metadata
 from pathlib import Path
 
-RUNTIME_ROOTS = ("PySide6", "Pillow", "numpy", "httpx", "winrt-runtime", "winrt-Windows.Foundation",
+RUNTIME_ROOTS = ("PySide6", "Pillow", "numpy", "httpx", "comtypes", "winrt-runtime", "winrt-Windows.Foundation",
                  "winrt-Windows.Foundation.Collections", "winrt-Windows.Globalization",
                  "winrt-Windows.Graphics.Imaging", "winrt-Windows.Media.Ocr", "winrt-Windows.Storage.Streams")
 _LICENSE_FILE = re.compile(r"^(licen[cs]e|copying|notice|authors)", re.I)

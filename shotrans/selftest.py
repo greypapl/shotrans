@@ -40,11 +40,14 @@ MODULES = (
     "shotrans.render",
     "shotrans.runtime",
     "shotrans.secret",
+    "shotrans.selection",
+    "shotrans.selection_clipboard",
     "shotrans.selftest",
     "shotrans.services",
     "shotrans.session",
     "shotrans.snapshot",
     "shotrans.term_add",
+    "shotrans.terminal_detect",
     "shotrans.texts",
     "shotrans.texts.about",
     "shotrans.texts.clip",
@@ -52,6 +55,7 @@ MODULES = (
     "shotrans.texts.doctor",
     "shotrans.texts.glossary",
     "shotrans.texts.history",
+    "shotrans.texts.select",
     "shotrans.texts.settings",
     "shotrans.texts.wizard",
     "shotrans.tomlw",
@@ -71,6 +75,8 @@ MODULES = (
     "shotrans.ui.hotkey_edit",
     "shotrans.ui.notice",
     "shotrans.ui.port",
+    "shotrans.ui.select_icon",
+    "shotrans.ui.selection_controller",
     "shotrans.ui.service_form",
     "shotrans.ui.settings_window",
     "shotrans.ui.term_dialog",
@@ -279,6 +285,19 @@ def _ocr() -> str:
     return f"langs={','.join(langs)} text={text!r}"
 
 
+def _selection() -> str:
+    from .selection import MouseHook, SelectionWindows
+    from .terminal_detect import create_automation
+
+    hook = MouseHook(SelectionWindows(), lambda *_: None)
+    if not hook.install():
+        raise RuntimeError("WH_MOUSE_LL")
+    hook.uninstall()
+    if not create_automation():
+        raise RuntimeError("UI Automation")
+    return "WH_MOUSE_LL / UI Automation"
+
+
 def _fail_row(name: str, e: BaseException) -> dict:
     return {"name": name, "ok": False,
             "detail": f"{type(e).__name__}: {e}\n{traceback.format_exc(limit=8)}"}
@@ -324,6 +343,7 @@ def run_selftest(out: Path, home: Path | None = None) -> int:
         results.append({"name": "notice", "ok": False, "detail": "skipped: setup failed"})
     else:
         _check(results, "notice", _notice)
+    _check(results, "selection", _selection)
     _check(results, "ocr", _ocr)
     loaded = getattr(shotrans, "LOADED_MSVCP140", None)
     report = {"ok": all(r["ok"] for r in results), "version": shotrans.__version__,

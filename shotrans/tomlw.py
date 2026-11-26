@@ -1,4 +1,4 @@
-"""最小的 TOML 写入：只支持「节 → 键 → 标量（str/bool/int/float）」两层，够写配置用。值为 None 的键跳过。"""
+"""配置用的最小 TOML 写入，支持标量和字符串数组。值为 None 的键跳过。"""
 from __future__ import annotations
 
 import math
@@ -36,6 +36,8 @@ def _value(v) -> str:
         return repr(v)  # 6.0 → "6.0"，0.1 → "0.1"，1e16 → "1e+16"（都是合法 TOML 浮点数）
     if isinstance(v, str):
         return _str(v)
+    if isinstance(v, list) and all(isinstance(item, str) for item in v):
+        return "[" + ", ".join(_str(item) for item in v) + "]"
     raise TypeError(f"不支持写入的类型：{type(v).__name__}")
 
 

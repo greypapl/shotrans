@@ -87,8 +87,9 @@ def _action(a, text):
 
 def test_menu_texts_and_separators(make):
     a = make()
-    assert _texts(a) == ["截图翻译（Ctrl+Alt+Shift+F10）", "翻译剪贴板（Ctrl+Alt+C）", "历史记录…", "设置…", "自检…", "重新加载配置", "关于…", "退出"]
-    assert [x.isSeparator() for x in a._menu.actions()] == [False, False, False, True, False, False, False, False,
+    assert _texts(a) == ["截图翻译（Ctrl+Alt+Shift+F10）", "翻译剪贴板（Ctrl+Alt+C）", "划词翻译",
+                         "历史记录…", "设置…", "自检…", "重新加载配置", "关于…", "退出"]
+    assert [x.isSeparator() for x in a._menu.actions()] == [False, False, False, False, True, False, False, False, False,
                                                             True, False]
 
 

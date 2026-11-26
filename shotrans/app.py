@@ -10,14 +10,14 @@ from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import Callable
 
-from PySide6.QtCore import QObject, QRect, Qt, QTimer, Signal
+from PySide6.QtCore import QObject, QPoint, QRect, Qt, QTimer, Signal
 from PySide6.QtGui import QAction, QCursor, QGuiApplication
 from PySide6.QtWidgets import QApplication, QMenu, QMessageBox, QSystemTrayIcon
 
 from . import autostart, i18n, paths
 from .capture import Capturer
 from .cliptext import MAX_CHARS, split_paragraphs
-from .config import Config, ConfigError, load_config, write_config
+from .config import Config, ConfigError, load_startup_config, write_config, write_select_config
 from .glossary import Glossary, load_glossary
 from .history import History
 from .hotkey import GlobalHotkey, parse_hotkey, same_combo, try_register
@@ -32,6 +32,7 @@ from .translate.router import Router
 from .translate.microsoft import MicrosoftClient
 from .translate.factory import service_client
 from .ui.notice import NoticePopup
+from .ui.selection_controller import SelectionController
 from .ui.windows import WindowManager
 
 log = logging.getLogger(__name__)
@@ -133,8 +134,7 @@ class ShotTransApp(QObject):
         self.ocr_fn = ocr_fn
         home.mkdir(parents=True, exist_ok=True)
         cfg_path = paths.config_path(home)
-        self.needs_setup = not cfg_path.exists()  # 没配置过：快捷键、点托盘改为打开引导，启动时也自动打开一次
-        self.config = Config() if self.needs_setup else load_config(cfg_path)
+        self.config, self.needs_setup = load_startup_config(cfg_path)
         i18n.set_language(self.config.language)
         c = self.config
         self.glossary_path = paths.glossary_path(home)
@@ -166,6 +166,8 @@ class ShotTransApp(QObject):
         self.notice = NoticePopup()
         self.notice.clicked.connect(self._on_notice_clicked)
         self._build_tray()
+        self.selection = SelectionController(self)
+        self.selection.set_enabled(c.select_enabled)
         i18n.hub().language_changed.connect(self._retranslate_tray)
         self.hotkey = GlobalHotkey(c.hotkey, self.start_capture)
         qapp.installNativeEventFilter(self.hotkey)
@@ -216,6 +218,9 @@ class ShotTransApp(QObject):
 
         add("capture", lambda _=False: self.start_capture())
         add("clip", lambda _=False: self.start_clip())
+        add("select", lambda checked: self.update_select(enabled=checked))
+        self._actions["select"].setCheckable(True)
+        self._actions["select"].setChecked(self.config.select_enabled)
         add("history", lambda _=False: self.open_window("history"))
         menu.addSeparator()
         add("settings", lambda _=False: self.open_window("settings"))
@@ -223,7 +228,7 @@ class ShotTransApp(QObject):
         add("reload", lambda _=False: self._reload_from_menu())
         add("about", lambda _=False: self.open_window("about"))
         menu.addSeparator()
-        add("quit", lambda _=False: QApplication.quit())
+        add("quit", lambda _=False: self.selection.finish_then(QApplication.quit))
         self._menu = menu
         self.tray.setContextMenu(menu)
         self.tray.activated.connect(
@@ -236,7 +241,8 @@ class ShotTransApp(QObject):
         self.tray.setToolTip(t("tray.tooltip", hotkey=hk))
         clip = self.config.clip_hotkey.strip()
         texts = {"capture": t("tray.capture", hotkey=hk),
-                 "clip": t("tray.clip", hotkey=clip) if clip else t("tray.clip_off"), "history": t("tray.history"),
+                 "clip": t("tray.clip", hotkey=clip) if clip else t("tray.clip_off"), "select": t("select.title"),
+                 "history": t("tray.history"),
                  "settings": t("tray.settings"), "doctor": t("tray.doctor"), "reload": t("tray.reload"),
                  "about": t("tray.about"), "quit": t("tray.quit")}
         for key, text in texts.items():
@@ -312,6 +318,7 @@ class ShotTransApp(QObject):
             return
         if self._modal_open():
             return
+        self.selection.dismiss()
         self.capturer.start()
 
     def on_wizard_closed(self, completed: bool) -> None:
@@ -339,13 +346,44 @@ class ShotTransApp(QObject):
 
     def reload_config(self) -> bool:
         try:
-            new = load_config(paths.config_path(self.home))
+            new, needs_setup = load_startup_config(paths.config_path(self.home), missing_ok=False)
         except (ConfigError, OSError) as e:  # OSError：没权限、被别的程序锁住之类，按读取失败处理
             self.notify(t("notice.reload_failed", error=e))
             return False
-        self.needs_setup = False
+        self.needs_setup = needs_setup
         self.apply_config(new)
         return True
+
+    def update_select(self, *, enabled: bool | None = None, exclude: list[str] | None = None) -> None:
+        changes = {}
+        if enabled is not None:
+            changes["select_enabled"] = enabled
+        if exclude is not None:
+            changes["select_exclude"] = list(exclude)
+        new = dataclasses.replace(self.config, **changes)
+        if new != self.config:
+            try:
+                write_select_config(paths.config_path(self.home), new)
+            except (ConfigError, OSError) as e:
+                self._actions["select"].setChecked(self.config.select_enabled)
+                self.notify(t("select.save_failed", error=e), target="settings:hotkey")
+                return
+            self.config = new
+            self._sync_selection()
+
+    def exclude_selection_app(self, process: str) -> None:
+        exclude = self.config.select_exclude
+        if process and not any(name.strip().casefold() == process.casefold() for name in exclude):
+            self.update_select(exclude=[*exclude, process])
+
+    def _sync_selection(self) -> None:
+        self.selection.dismiss()
+        self.selection.set_enabled(self.config.select_enabled)
+        self._actions["select"].setChecked(self.config.select_enabled)
+        settings = self.windows.get("settings")
+        sync = getattr(settings, "load_selection", None)
+        if sync is not None:
+            sync(self.config)
 
     def apply_config(self, new: Config) -> list[str]:
         """设置保存、重新加载配置共用。按顺序：路由 → 快捷键 → 托盘文字 → 开机自启 → 语言；
@@ -387,6 +425,7 @@ class ShotTransApp(QObject):
                 log.exception("注册「复制后翻译」快捷键失败")
                 failed.append((N_("apply.clip_hotkey"), {"hotkey": new.clip_hotkey}))
         self.config = dataclasses.replace(new, hotkey=hotkey)
+        self._sync_selection()
         self.history.limit = new.history_limit
         self.history.save_images = new.history_save_images
         try:  # 3. 托盘文字
@@ -538,7 +577,9 @@ class ShotTransApp(QObject):
             return
         if self.capturer.busy or self._modal_open():  # 正在框选：小窗会盖在框选层上，框完又被关掉
             return
-        text = QGuiApplication.clipboard().text()
+        self.translate_text(QGuiApplication.clipboard().text(), QCursor.pos())
+
+    def translate_text(self, text: str, cursor: QPoint) -> None:
         if len(text) > MAX_CHARS:  # 先查长度再分段：几兆的文字分段本身就会卡住界面
             self.notify(t("notice.clip_too_long", n=len(text), max=MAX_CHARS))
             return
@@ -551,7 +592,7 @@ class ShotTransApp(QObject):
             old.close()
         self._reload_glossary()
         from .ui.clip_window import ClipWindow
-        w = ClipWindow(paragraphs, self.router, self.history, cursor=QCursor.pos())
+        w = ClipWindow(paragraphs, self.router, self.history, cursor=cursor)
         w.closed.connect(self._on_overlay_closed)
         self.overlays.append(w)
         self.clip_window = w
@@ -561,6 +602,8 @@ class ShotTransApp(QObject):
 
     def shutdown(self) -> None:
         first, self._shut = not self._shut, True
+        if first:
+            self.selection.shutdown()
         self.windows.close_all()
         self.notice.hide()
         if first:  # 只断开一次：重复断开时 PySide6 先发 RuntimeWarning，-W error 下会变成 SystemError

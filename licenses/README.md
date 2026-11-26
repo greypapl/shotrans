@@ -8,6 +8,7 @@
 | Pillow | MIT-CMU | https://github.com/python-pillow/Pillow/blob/main/LICENSE |
 | numpy | BSD-3-Clause | https://github.com/numpy/numpy/blob/main/LICENSE.txt |
 | httpx | BSD-3-Clause | https://github.com/encode/httpx/blob/master/LICENSE.md |
+| comtypes | MIT | https://github.com/enthought/comtypes/blob/main/LICENSE.txt |
 | pywinrt (winrt-*) | MIT | https://github.com/pywinrt/pywinrt/blob/main/LICENSE |
 
 ## LGPL-3.0 说明（PySide6 / Qt）

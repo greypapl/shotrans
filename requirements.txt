@@ -6,6 +6,7 @@ PySide6>=6.7                    # 界面：托盘、框选、浮窗
 Pillow>=10.3                    # 画译文
 numpy>=1.26                     # 取色
 httpx>=0.27                     # 调 vLLM 和备用翻译接口
+comtypes>=1.4                   # 划词翻译：识别编辑器内嵌终端
 winrt-runtime>=2.3              # 调 Windows 自带 OCR
 winrt-Windows.Foundation>=2.3
 winrt-Windows.Foundation.Collections>=2.3

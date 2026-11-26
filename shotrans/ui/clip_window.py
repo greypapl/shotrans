@@ -26,15 +26,15 @@ MAX_SCREEN_FRACTION = 0.6
 GAP = 14  # 小窗离鼠标的距离
 
 
-def place_near(cursor: QPoint, size: tuple[int, int], screen: QRect) -> QPoint:
+def place_near(cursor: QPoint, size: tuple[int, int], screen: QRect, gap: int = GAP) -> QPoint:
     """放在鼠标右下方；右边/下边放不下就翻到左边/上边；最后夹在屏幕里。"""
     w, h = size
-    x, y = cursor.x() + GAP, cursor.y() + GAP
+    x, y = cursor.x() + gap, cursor.y() + gap
     right, bottom = screen.left() + screen.width(), screen.top() + screen.height()
     if x + w > right:
-        x = cursor.x() - GAP - w
+        x = cursor.x() - gap - w
     if y + h > bottom:
-        y = cursor.y() - GAP - h
+        y = cursor.y() - gap - h
     x = min(max(x, screen.left()), max(screen.left(), right - w))
     y = min(max(y, screen.top()), max(screen.top(), bottom - h))
     return QPoint(x, y)

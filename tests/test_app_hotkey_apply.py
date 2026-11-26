@@ -127,10 +127,10 @@ def test_non_hotkey_failure_bubble_has_no_target(make, env):
 def test_reload_oserror_keeps_current(make, env, monkeypatch):
     a = make()
 
-    def denied(path):
+    def denied(path, *, missing_ok):
         raise PermissionError("拒绝访问")
 
-    monkeypatch.setattr(app_mod, "load_config", denied)
+    monkeypatch.setattr(app_mod, "load_startup_config", denied)
     assert a.reload_config() is False
     assert a.config.hotkey == F10
     assert env["messages"] == ["重新加载配置失败，仍使用当前配置：拒绝访问"]
