@@ -4,6 +4,7 @@ import sys
 from pathlib import Path
 
 from PyInstaller.utils.hooks import collect_submodules
+from comtypes.client import GetModule
 
 ROOT = Path(SPECPATH)
 sys.path.insert(0, str(ROOT))
@@ -14,6 +15,9 @@ hidden = [m for m in collect_submodules("shotrans") if not m.endswith("__main__"
 hidden += collect_submodules("winrt")
 hidden += ["winrt.windows.foundation", "winrt.windows.foundation.collections", "winrt.windows.globalization",
            "winrt.windows.graphics.imaging", "winrt.windows.media.ocr", "winrt.windows.storage.streams"]
+# 动态生成的 Windows 类型库也打进包里，运行时无需在安装目录写入。
+uia = GetModule("UIAutomationCore.dll")
+hidden += [uia.__name__, uia.IUIAutomation.__module__]
 
 a = Analysis(
     [str(ROOT / "run_shotrans.py")],

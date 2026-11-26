@@ -134,7 +134,7 @@ def test_sections_in_order_with_header(tmp_path):
     text = p.read_text(encoding="utf-8")
     assert text.startswith("# ")
     assert [ln for ln in text.splitlines() if ln.startswith("[")] == [
-        "[general]", "[primary]", "[backup]", "[free]", "[hotkey]", "[translate]", "[timeouts]", "[history]"]
+        "[general]", "[primary]", "[backup]", "[free]", "[hotkey]", "[select]", "[translate]", "[timeouts]", "[history]"]
 
 
 def test_autostart_none_not_written(tmp_path):

@@ -8,7 +8,8 @@ import os
 from typing import Callable
 
 from PySide6.QtWidgets import (QCheckBox, QComboBox, QDoubleSpinBox, QFormLayout, QGroupBox, QHBoxLayout, QLabel,
-                               QLineEdit, QMessageBox, QPushButton, QSpinBox, QTabWidget, QVBoxLayout, QWidget)
+                               QLineEdit, QMessageBox, QPlainTextEdit, QPushButton, QSpinBox, QTabWidget, QVBoxLayout,
+                               QWidget)
 
 from .. import autostart, config, i18n, paths
 from ..config import Config, ConfigError, ServiceConfig
@@ -24,7 +25,7 @@ TAB_KEYS = (N_("settings.tab.service"), N_("settings.tab.hotkey"), N_("settings.
 DEFAULT_HOTKEY = "Ctrl+Alt+Q"
 DEFAULT_CLIP_HOTKEY = Config().clip_hotkey
 SECTION_PAGES = {"[primary]": "service", "[backup]": "service", "[hotkey]": "hotkey", "[general]": "general",
-                 "[history]": "general"}
+                 "[history]": "general", "[select]": "hotkey"}
 # (Config 字段, 名称键, 说明键, 整数?, 最小, 最大, 步长)
 ADVANCED = [
     ("chunk_chars", N_("settings.adv.chunk_chars"), N_("settings.adv.chunk_chars_tip"), True, 50, 20000, 50),
@@ -109,6 +110,18 @@ class SettingsWindow(QWidget):
         clip_row.addWidget(self.btn_clip_off)
         clip_row.addStretch(1)
         l2.addLayout(clip_row)
+        self.select_group = QGroupBox()
+        self.select_enabled = QCheckBox()
+        self.select_hint = QLabel()
+        self.select_hint.setWordWrap(True)
+        self.select_label = QLabel()
+        self.select_exclude = QPlainTextEdit()
+        self.select_label.setBuddy(self.select_exclude)
+        self.select_exclude.setMaximumHeight(90)
+        select_layout = QVBoxLayout(self.select_group)
+        for widget in (self.select_enabled, self.select_hint, self.select_label, self.select_exclude):
+            select_layout.addWidget(widget)
+        l2.addWidget(self.select_group)
         l2.addStretch(1)
 
         # ③ 术语表
@@ -200,6 +213,11 @@ class SettingsWindow(QWidget):
         self.lbl_clip.setText(t("settings.clip_label"))
         self.btn_clip_default.setText(t("settings.hotkey_default"))
         self.btn_clip_off.setText(t("settings.clip_off"))
+        self.select_group.setTitle(t("select.title"))
+        self.select_enabled.setText(t("select.enabled"))
+        self.select_hint.setText(t("select.clip_hint"))
+        self.select_label.setText(t("select.exclusions"))
+        self.select_exclude.setPlaceholderText(t("select.exclusions_hint"))
         self.lbl_language.setText(t("settings.language"))
         self.autostart.setText(t("settings.autostart"))
         self.autostart_trial.setText(t("settings.autostart_trial"))
@@ -228,12 +246,17 @@ class SettingsWindow(QWidget):
         self.hotkey_edit.set_spec(c.hotkey)
         self._loaded_clip = c.clip_hotkey
         self.clip_edit.set_spec(c.clip_hotkey)
+        self.load_selection(c)
         self.language.setCurrentIndex(max(0, self.language.findData(c.language)))
         self.autostart.setChecked(c.autostart if c.autostart is not None else bool(self._autostart_state()))
         self.history_limit.setValue(c.history_limit)
         self.history_images.setChecked(c.history_save_images)
         for field, *_ in ADVANCED:
             self.adv[field].setValue(getattr(c, field))
+
+    def load_selection(self, c: Config) -> None:
+        self.select_enabled.setChecked(c.select_enabled)
+        self.select_exclude.setPlainText("\n".join(c.select_exclude))
 
     def _reset_advanced(self) -> None:
         d = Config()
@@ -247,6 +270,8 @@ class SettingsWindow(QWidget):
             primary=self.primary.service(),
             backup=ServiceConfig() if self.backup.is_empty() else self.backup.service(),
             hotkey=self.hotkey_edit.spec(), clip_hotkey=self.clip_edit.spec(), domain_hint=self.domain.text().strip(),
+            select_enabled=self.select_enabled.isChecked(),
+            select_exclude=[line.strip() for line in self.select_exclude.toPlainText().splitlines() if line.strip()],
             free_enabled=self.free.isChecked(), history_limit=self.history_limit.value(),
             history_save_images=self.history_images.isChecked(), **values)
 

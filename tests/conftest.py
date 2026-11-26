@@ -126,6 +126,17 @@ def _no_real_clip_hotkey(monkeypatch):
     monkeypatch.setattr(GlobalHotkey, "register", register)
 
 
+@pytest.fixture(autouse=True)
+def _no_desktop_mouse_hook_in_app_tests(monkeypatch):
+    from shotrans.ui import selection_controller
+
+    class TestMouseHook(selection_controller.MouseHook):
+        def install(self):
+            return True
+
+    monkeypatch.setattr(selection_controller, "MouseHook", TestMouseHook)
+
+
 @pytest.fixture
 def track(qtbot):
     """窗口带 WA_DeleteOnClose，qtbot.addWidget 收尾时会对已删除的对象再 close 一次而报错，所以自己收尾。"""
